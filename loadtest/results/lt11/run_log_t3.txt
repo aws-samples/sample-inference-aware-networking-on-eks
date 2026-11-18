@@ -1,0 +1,221 @@
+===================== LT-11 t3 single-session run 2026-07-28T10:49:29Z =====================
+== pin the topology to g6.xlarge (test-only; revert at teardown) ==
+{"karpenter.k8s.aws/instance-family":"g6","node.kubernetes.io/instance-type":"g6.xlarge","tier":"batch"}
+== the rr route and Service must exist (idempotent; their absence caused the original fallthrough) ==
+== provision: KEDA pinned at 4, batch serving and its Endpoint Picker up ==
+Warning: CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0
+deployment "vllm-llama3-batch-epp" successfully rolled out
+  waiting for 4 batch pods Ready (model load takes minutes)
+pod/vllm-llama3-batch-68ffdcdf89-t9bws condition met
+== GATE 1: C must equal 30736 on this topology ==
+  num_gpu_blocks=1921 C=30736
+== topology evidence (this is the variable being controlled) ==
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal m6i.xlarge
+    ip-10-0-0-1.ec2.internal m6i.xlarge
+    vllm-llama3-batch-68ffdcdf89-cmkf2 ip-10-0-0-1.ec2.internal
+    vllm-llama3-batch-68ffdcdf89-jpmnx ip-10-0-0-1.ec2.internal
+    vllm-llama3-batch-68ffdcdf89-n6svh ip-10-0-0-1.ec2.internal
+    vllm-llama3-batch-68ffdcdf89-t9bws ip-10-0-0-1.ec2.internal
+  g6.xlarge nodes: 4
+== gateway http://RELAY-LB.example.com ==
+== GATE 2: rr-grouped must be cache-blind (spread, hit near 0.667) ==
+  rr: hit=0.6611 conc=0.271
+<string>:1: SyntaxWarning: "is not" with 'float' literal. Did you mean "!="?
+== GATE 3: epp-grouped must reach the cache-locality regime, and differ from rr ==
+  epp: hit=0.8248 conc=0.75
+<string>:1: SyntaxWarning: "is not" with 'float' literal. Did you mean "!="?
+  GATES PASS: rr 0.6611 versus epp 0.8248, separation 0.1637
+===== rho 0.8 =====
+>> t3 A (epp/grouped) rho=0.8 reps=67 rep=1 -> loadtest/results/lt11/cell_A_rho0.8_t3_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.9058, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 1.0, "e2e_latency_p50_s": 5.246, "e2e_latency_p90_s": 5.317}
+>> t3 A (epp/grouped) rho=0.8 reps=67 rep=2 -> loadtest/results/lt11/cell_A_rho0.8_t3_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8258, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.736, "e2e_latency_p50_s": 5.069, "e2e_latency_p90_s": 5.26}
+>> t3 B (epp/interleaved) rho=0.8 reps=67 rep=1 -> loadtest/results/lt11/cell_B_rho0.8_t3_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.6343, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.268, "e2e_latency_p50_s": 5.064, "e2e_latency_p90_s": 6.847}
+>> t3 B (epp/interleaved) rho=0.8 reps=67 rep=2 -> loadtest/results/lt11/cell_B_rho0.8_t3_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.6148, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 5.166, "e2e_latency_p90_s": 7.008}
+>> t3 C (rr/grouped) rho=0.8 reps=67 rep=1 -> loadtest/results/lt11/cell_C_rho0.8_t3_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.661, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 5.018, "e2e_latency_p90_s": 5.12}
+>> t3 C (rr/grouped) rho=0.8 reps=67 rep=2 -> loadtest/results/lt11/cell_C_rho0.8_t3_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6611, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 4.995, "e2e_latency_p90_s": 5.085}
+>> t3 D (rr/interleaved) rho=0.8 reps=67 rep=1 -> loadtest/results/lt11/cell_D_rho0.8_t3_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.226, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 6.303, "e2e_latency_p90_s": 7.368}
+>> t3 D (rr/interleaved) rho=0.8 reps=67 rep=2 -> loadtest/results/lt11/cell_D_rho0.8_t3_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.2422, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 6.274, "e2e_latency_p90_s": 7.371}
+===== rho 1.0 =====
+>> t3 A (epp/grouped) rho=1.0 reps=84 rep=1 -> loadtest/results/lt11/cell_A_rho1.0_t3_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8306, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.748, "e2e_latency_p50_s": 5.398, "e2e_latency_p90_s": 5.516}
+>> t3 A (epp/grouped) rho=1.0 reps=84 rep=2 -> loadtest/results/lt11/cell_A_rho1.0_t3_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.829, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.756, "e2e_latency_p50_s": 5.46, "e2e_latency_p90_s": 5.616}
+>> t3 B (epp/interleaved) rho=1.0 reps=84 rep=1 -> loadtest/results/lt11/cell_B_rho1.0_t3_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.2312, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.274, "e2e_latency_p50_s": 7.02, "e2e_latency_p90_s": 8.962}
+>> t3 B (epp/interleaved) rho=1.0 reps=84 rep=2 -> loadtest/results/lt11/cell_B_rho1.0_t3_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.277, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 6.655, "e2e_latency_p90_s": 8.989}
+>> t3 C (rr/grouped) rho=1.0 reps=84 rep=1 -> loadtest/results/lt11/cell_C_rho1.0_t3_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6633, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 5.169, "e2e_latency_p90_s": 5.25}
+>> t3 C (rr/grouped) rho=1.0 reps=84 rep=2 -> loadtest/results/lt11/cell_C_rho1.0_t3_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6649, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 5.169, "e2e_latency_p90_s": 5.247}
+>> t3 D (rr/interleaved) rho=1.0 reps=84 rep=1 -> loadtest/results/lt11/cell_D_rho1.0_t3_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1373, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 7.145, "e2e_latency_p90_s": 8.311}
+>> t3 D (rr/interleaved) rho=1.0 reps=84 rep=2 -> loadtest/results/lt11/cell_D_rho1.0_t3_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1343, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 7.017, "e2e_latency_p90_s": 8.735}
+===== rho 1.2 =====
+>> t3 A (epp/grouped) rho=1.2 reps=101 rep=1 -> loadtest/results/lt11/cell_A_rho1.2_t3_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8248, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.423, "e2e_latency_p50_s": 5.703, "e2e_latency_p90_s": 5.877}
+>> t3 A (epp/grouped) rho=1.2 reps=101 rep=2 -> loadtest/results/lt11/cell_A_rho1.2_t3_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.912, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 1.0, "e2e_latency_p50_s": 5.913, "e2e_latency_p90_s": 5.963}
+>> t3 B (epp/interleaved) rho=1.2 reps=101 rep=1 -> loadtest/results/lt11/cell_B_rho1.2_t3_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0695, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.272, "e2e_latency_p50_s": 8.003, "e2e_latency_p90_s": 10.543}
+>> t3 B (epp/interleaved) rho=1.2 reps=101 rep=2 -> loadtest/results/lt11/cell_B_rho1.2_t3_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0708, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 7.971, "e2e_latency_p90_s": 10.033}
+>> t3 C (rr/grouped) rho=1.2 reps=101 rep=1 -> loadtest/results/lt11/cell_C_rho1.2_t3_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6648, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 5.496, "e2e_latency_p90_s": 5.606}
+>> t3 C (rr/grouped) rho=1.2 reps=101 rep=2 -> loadtest/results/lt11/cell_C_rho1.2_t3_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6648, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.269, "e2e_latency_p50_s": 5.497, "e2e_latency_p90_s": 5.625}
+>> t3 D (rr/interleaved) rho=1.2 reps=101 rep=1 -> loadtest/results/lt11/cell_D_rho1.2_t3_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0284, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.263, "e2e_latency_p50_s": 8.146, "e2e_latency_p90_s": 9.865}
+>> t3 D (rr/interleaved) rho=1.2 reps=101 rep=2 -> loadtest/results/lt11/cell_D_rho1.2_t3_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0261, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 8.125, "e2e_latency_p90_s": 9.736}
+===== rho 1.6 =====
+>> t3 A (epp/grouped) rho=1.6 reps=135 rep=1 -> loadtest/results/lt11/cell_A_rho1.6_t3_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8304, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.764, "e2e_latency_p50_s": 6.03, "e2e_latency_p90_s": 6.379}
+>> t3 A (epp/grouped) rho=1.6 reps=135 rep=2 -> loadtest/results/lt11/cell_A_rho1.6_t3_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8351, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.774, "e2e_latency_p50_s": 6.019, "e2e_latency_p90_s": 6.366}
+>> t3 B (epp/interleaved) rho=1.6 reps=135 rep=1 -> loadtest/results/lt11/cell_B_rho1.6_t3_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0056, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.266, "e2e_latency_p50_s": 9.167, "e2e_latency_p90_s": 12.702}
+>> t3 B (epp/interleaved) rho=1.6 reps=135 rep=2 -> loadtest/results/lt11/cell_B_rho1.6_t3_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0071, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.272, "e2e_latency_p50_s": 9.278, "e2e_latency_p90_s": 11.92}
+>> t3 C (rr/grouped) rho=1.6 reps=135 rep=1 -> loadtest/results/lt11/cell_C_rho1.6_t3_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6638, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.266, "e2e_latency_p50_s": 5.717, "e2e_latency_p90_s": 5.926}
+>> t3 C (rr/grouped) rho=1.6 reps=135 rep=2 -> loadtest/results/lt11/cell_C_rho1.6_t3_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6686, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 5.806, "e2e_latency_p90_s": 5.969}
+>> t3 D (rr/interleaved) rho=1.6 reps=135 rep=1 -> loadtest/results/lt11/cell_D_rho1.6_t3_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0042, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 9.452, "e2e_latency_p90_s": 11.698}
+>> t3 D (rr/interleaved) rho=1.6 reps=135 rep=2 -> loadtest/results/lt11/cell_D_rho1.6_t3_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0042, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 9.478, "e2e_latency_p90_s": 11.322}
+== DONE 2026-07-28T14:01:44Z ==
+== summary ==
+=== LT-11 cliff curve, label set _t3: prefix-cache hit rate (2-rep mean) ===
+  rho | A epp grp | C rr grp | B epp intl | D rr intl ||     A-C     B-D |    A-B    C-D         sign
+  0.8 |    0.8658 |   0.6611 |     0.6245 |    0.2341 ||  0.2047  0.3904 | 0.2413  0.427  SUBSTITUTES
+  1.0 |    0.8298 |   0.6641 |     0.2541 |    0.1358 ||  0.1657  0.1183 | 0.5757 0.5283  COMPLEMENTS
+  1.2 |    0.8684 |   0.6648 |     0.0702 |    0.0273 ||  0.2036  0.0429 | 0.7982 0.6375  COMPLEMENTS
+  1.6 |    0.8327 |   0.6662 |     0.0063 |    0.0042 ||  0.1665  0.0021 | 0.8264  0.662  COMPLEMENTS
+ 2.54 |    0.9135 |   0.6643 |        0.0 |       0.0 ||  0.2492     0.0 | 0.9135 0.6643   degenerate   (LT-8 anchor, B=D=0, not re-run)
+
+=== crossover location (where the interaction sign changes) ===
+  rho 0.8: (A-B)-(C-D) = -0.1857 -> SUBSTITUTES
+  rho 1.0: (A-B)-(C-D) = +0.0474 -> COMPLEMENTS
+  CROSSOVER between rho 0.8 and rho 1.0
+  rho 1.2: (A-B)-(C-D) = +0.1607 -> COMPLEMENTS
+  rho 1.6: (A-B)-(C-D) = +0.1644 -> COMPLEMENTS
+
+=== rep spread (max minus min) ===
+  A: rho0.8=0.08  rho1.0=0.0016  rho1.2=0.0872  rho1.6=0.0047
+  B: rho0.8=0.0195  rho1.0=0.0458  rho1.2=0.0013  rho1.6=0.0015
+  C: rho0.8=0.0001  rho1.0=0.0016  rho1.2=0.0  rho1.6=0.0048
+  D: rho0.8=0.0162  rho1.0=0.003  rho1.2=0.0023  rho1.6=0.0
+
+=== validity gates (R must be 12.0, ok 624, N 4->4, conc recorded) ===
+  A rho=0.8: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[1.0, 0.736]
+  A rho=1.0: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.748, 0.756]
+  A rho=1.2: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.423, 1.0]
+  A rho=1.6: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.764, 0.774]
+  B rho=0.8: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.268, 0.264]
+  B rho=1.0: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.274, 0.26]
+  B rho=1.2: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.272, 0.264]
+  B rho=1.6: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.266, 0.272]
+  C rho=0.8: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.26, 0.261]
+  C rho=1.0: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.256, 0.255]
+  C rho=1.2: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.264, 0.269]
+  C rho=1.6: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.266, 0.264]
+  D rho=0.8: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.256, 0.256]
+  D rho=1.0: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.26, 0.26]
+  D rho=1.2: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.263, 0.26]
+  D rho=1.6: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.255, 0.261]
+
+gate summary: ALL PASS
+
+=== latency within a rho point only (p50/p90 seconds, 2-rep mean) ===
+  rho=0.8: A=5.1575/5.2885  C=5.0065/5.1025  B=5.115/6.9275  D=6.2885/7.3695
+  rho=1.0: A=5.429/5.566  C=5.169/5.2485  B=6.8375/8.9755  D=7.081/8.523
+  rho=1.2: A=5.808/5.92  C=5.4965/5.6155  B=7.987/10.288  D=8.1355/9.8005
+  rho=1.6: A=6.0245/6.3725  C=5.7615/5.9475  B=9.2225/12.311  D=9.465/11.51
+===================== LT-11 t3 single-session run 2026-07-28T14:30:36Z =====================
+== pin the topology to g6.xlarge (test-only; revert at teardown) ==
+{"karpenter.k8s.aws/instance-family":"g6","node.kubernetes.io/instance-type":"g6.xlarge","tier":"batch"}
+== the rr route and Service must exist (idempotent; their absence caused the original fallthrough) ==
+== provision: KEDA pinned at 4, batch serving and its Endpoint Picker up ==
+Warning: CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0
+deployment "vllm-llama3-batch-epp" successfully rolled out
+  waiting for 4 batch pods Ready (model load takes minutes)
+pod/vllm-llama3-batch-68ffdcdf89-t9bws condition met
+== GATE 1: C must equal 30736 on this topology ==
+  num_gpu_blocks=1921 C=30736
+== topology evidence (this is the variable being controlled) ==
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal g6.xlarge
+    ip-10-0-0-1.ec2.internal m6i.xlarge
+    ip-10-0-0-1.ec2.internal m6i.xlarge
+    vllm-llama3-batch-68ffdcdf89-cmkf2 ip-10-0-0-1.ec2.internal
+    vllm-llama3-batch-68ffdcdf89-jpmnx ip-10-0-0-1.ec2.internal
+    vllm-llama3-batch-68ffdcdf89-n6svh ip-10-0-0-1.ec2.internal
+    vllm-llama3-batch-68ffdcdf89-t9bws ip-10-0-0-1.ec2.internal
+  g6.xlarge nodes: 4
+== gateway http://RELAY-LB.example.com ==
+== GATE 2: rr-grouped must be cache-blind (spread, hit near 0.667) ==
+  rr: hit=0.6611 conc=0.292
+<string>:1: SyntaxWarning: "is not" with 'float' literal. Did you mean "!="?
+== GATE 3: epp-grouped must reach the cache-locality regime, and differ from rr ==
+  epp: hit=0.8452 conc=0.771
+<string>:1: SyntaxWarning: "is not" with 'float' literal. Did you mean "!="?
+  GATES PASS: rr 0.6611 versus epp 0.8452, separation 0.1841
+===== rho 0.9 =====
+>> t3 A (epp/grouped) rho=0.9 reps=76 rep=1 -> loadtest/results/lt11/cell_A_rho0.9_t3_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8268, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.75, "e2e_latency_p50_s": 5.375, "e2e_latency_p90_s": 5.484}
+>> t3 A (epp/grouped) rho=0.9 reps=76 rep=2 -> loadtest/results/lt11/cell_A_rho0.9_t3_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.83, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.756, "e2e_latency_p50_s": 5.32, "e2e_latency_p90_s": 5.416}
+>> t3 B (epp/interleaved) rho=0.9 reps=76 rep=1 -> loadtest/results/lt11/cell_B_rho0.9_t3_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.4638, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.268, "e2e_latency_p50_s": 5.722, "e2e_latency_p90_s": 8.637}
+>> t3 B (epp/interleaved) rho=0.9 reps=76 rep=2 -> loadtest/results/lt11/cell_B_rho0.9_t3_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.4141, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.269, "e2e_latency_p50_s": 5.848, "e2e_latency_p90_s": 8.179}
+>> t3 C (rr/grouped) rho=0.9 reps=76 rep=1 -> loadtest/results/lt11/cell_C_rho0.9_t3_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.664, "effective_R": 11.98, "requests_ok": 623, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 5.091, "e2e_latency_p90_s": 5.158}
+>> t3 C (rr/grouped) rho=0.9 reps=76 rep=2 -> loadtest/results/lt11/cell_C_rho0.9_t3_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.663, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 5.099, "e2e_latency_p90_s": 5.166}
+>> t3 D (rr/interleaved) rho=0.9 reps=76 rep=1 -> loadtest/results/lt11/cell_D_rho0.9_t3_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1792, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.263, "e2e_latency_p50_s": 6.626, "e2e_latency_p90_s": 7.757}
+>> t3 D (rr/interleaved) rho=0.9 reps=76 rep=2 -> loadtest/results/lt11/cell_D_rho0.9_t3_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1857, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 6.613, "e2e_latency_p90_s": 7.775}
+== DONE 2026-07-28T15:14:05Z ==
+== summary ==
+=== LT-11 cliff curve, label set _t3: prefix-cache hit rate (2-rep mean) ===
+  rho | A epp grp | C rr grp | B epp intl | D rr intl ||     A-C     B-D |    A-B    C-D         sign
+  0.9 |    0.8284 |   0.6635 |      0.439 |    0.1825 ||  0.1649  0.2565 | 0.3894  0.481  SUBSTITUTES
+ 2.54 |    0.9135 |   0.6643 |        0.0 |       0.0 ||  0.2492     0.0 | 0.9135 0.6643   degenerate   (LT-8 anchor, B=D=0, not re-run)
+
+=== crossover location (where the interaction sign changes) ===
+  rho 0.9: (A-B)-(C-D) = -0.0916 -> SUBSTITUTES
+
+=== rep spread (max minus min) ===
+  A: rho0.9=0.0032
+  B: rho0.9=0.0497
+  C: rho0.9=0.001
+  D: rho0.9=0.0065
+
+=== validity gates (R must be 12.0, ok 624, N 4->4, conc recorded) ===
+  A rho=0.9: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.75, 0.756]
+  B rho=0.9: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.268, 0.269]
+  C rho=0.9: reps=2 R=[11.98, 12.0] ok=[623, 624] N=[(4, 4)] conc=[0.26, 0.255]  <-- CHECK
+  D rho=0.9: reps=2 R=[12.0] ok=[624] N=[(4, 4)] conc=[0.263, 0.26]
+
+gate summary: 1 cell groups need review
+
+=== latency within a rho point only (p50/p90 seconds, 2-rep mean) ===
+  rho=0.9: A=5.3475/5.45  C=5.095/5.162  B=5.785/8.408  D=6.6195/7.766

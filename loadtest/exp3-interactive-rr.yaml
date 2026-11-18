@@ -1,0 +1,51 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Experiment 3 interactive-tier round-robin baseline (MEASUREMENT ONLY, delete at teardown).
+# The exact sibling of loadtest/lt8-batch-rr-service.yaml and loadtest/lt8-batch-route.yaml, for
+# the standard interactive lane on L40S. Both arms of experiment 3 enter through the SAME gateway,
+# so the network path is hop-equalized and the only variable is the scorer.
+#
+# ClusterIP, deliberately, NOT the LoadBalancer of the older loadtest/lt2-rr-service.yaml: INV12
+# asserts exactly one externally exposed Service in this cluster and it is the relay's. A
+# LoadBalancer here would break that invariant to run a test, which is the wrong trade.
+#
+# PRECEDENCE (Gateway API: longest path first, THEN header-match count). pub_routing.py sends only
+# the x-pub-arm header, so the epp arm carries x-pub-arm=epp, matches no rule below, and falls
+# through to the canonical catch-all interactive rule (InferencePool plus Endpoint Picker), exactly
+# as the Llama publication arms did. The rr arm carries x-pub-arm=rr, matches this ONE-header rule
+# at the same /v1 path, and so outranks the ZERO-header catch-all. The canonical TWO-header rules
+# are unaffected because no production traffic ever carries x-pub-arm. INV7 is untouched.
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama3-interactive-rr
+  namespace: inference
+  labels: { app: vllm-llama3, tier: interactive, exp3: rr-baseline }
+spec:
+  type: ClusterIP
+  selector: { app: vllm-llama3, tier: interactive }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: exp3-interactive-rr-route
+  namespace: inference
+  labels: { exp3: rr-route }
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: inference-gateway
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /v1 }
+          headers:
+            - { type: Exact, name: x-pub-arm, value: rr }
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: vllm-llama3-interactive-rr
+          port: 8000
+      timeouts: { request: "600s", backendRequest: "600s" }

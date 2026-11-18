@@ -1,0 +1,259 @@
+=== operating-point match assertion (LT-10 must equal LT-8) ===
+  match P_distinct_prefixes = 52
+  match prefix_reps = 214
+  match JOBS_total = 624
+  match N_replicas = 4
+  max_tokens=64 (LT-8 run_lt8_direct MAXTOK=64), model Llama-3.1-8B (both drivers), temp 0, cold cache via unique salted prefixes (same as LT-8)
+>> preflight images: async-worker=111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:v10 submit-api=111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:v10
+Warning: CooldownPeriod is configured but is not relevant. CooldownPeriod is only relevant when minReplicaCount = 0 or idleReplicaCount = 0
+scaledobject.keda.sh/vllm-llama3-batch annotated
+scaledobject.keda.sh/async-worker annotated
+deployment.apps/vllm-llama3-batch scaled
+deployment "vllm-llama3-batch" successfully rolled out
+deployment.apps/async-worker scaled
+deployment "async-worker" successfully rolled out
+>> SQS_BATCH_SIZE (deployed): SQS_BATCH_SIZE=1
+>> cold cache via unique per-cell salt (lt8_cell.py sets SALT=tag); replicas stay loaded
+  batch replicas visible: 4
+>> LT-10 cell Aprime (grouped) rep 1 -> loadtest/results/lt10/cell_Aprime_r1.json
+group 0: submitted 12 of 12; waiting for drain (<= 1800s)
+group 0: drained (12 jobs terminal) in 10s
+group 1: submitted 12 of 12; waiting for drain (<= 1800s)
+group 1: drained (12 jobs terminal) in 9s
+group 2: submitted 12 of 12; waiting for drain (<= 1800s)
+group 2: drained (12 jobs terminal) in 10s
+group 3: submitted 12 of 12; waiting for drain (<= 1800s)
+group 3: drained (12 jobs terminal) in 10s
+group 4: submitted 12 of 12; waiting for drain (<= 1800s)
+group 4: drained (12 jobs terminal) in 10s
+group 5: submitted 12 of 12; waiting for drain (<= 1800s)
+group 5: drained (12 jobs terminal) in 10s
+group 6: submitted 12 of 12; waiting for drain (<= 1800s)
+group 6: drained (12 jobs terminal) in 9s
+group 7: submitted 12 of 12; waiting for drain (<= 1800s)
+group 7: drained (12 jobs terminal) in 10s
+group 8: submitted 12 of 12; waiting for drain (<= 1800s)
+group 8: drained (12 jobs terminal) in 10s
+group 9: submitted 12 of 12; waiting for drain (<= 1800s)
+group 9: drained (12 jobs terminal) in 10s
+group 10: submitted 12 of 12; waiting for drain (<= 1800s)
+group 10: drained (12 jobs terminal) in 10s
+group 11: submitted 12 of 12; waiting for drain (<= 1800s)
+group 11: drained (12 jobs terminal) in 9s
+group 12: submitted 12 of 12; waiting for drain (<= 1800s)
+group 12: drained (12 jobs terminal) in 10s
+group 13: submitted 12 of 12; waiting for drain (<= 1800s)
+group 13: drained (12 jobs terminal) in 10s
+group 14: submitted 12 of 12; waiting for drain (<= 1800s)
+group 14: drained (12 jobs terminal) in 10s
+group 15: submitted 12 of 12; waiting for drain (<= 1800s)
+group 15: drained (12 jobs terminal) in 10s
+group 16: submitted 12 of 12; waiting for drain (<= 1800s)
+group 16: drained (12 jobs terminal) in 9s
+group 17: submitted 12 of 12; waiting for drain (<= 1800s)
+group 17: drained (12 jobs terminal) in 17s
+group 18: submitted 12 of 12; waiting for drain (<= 1800s)
+group 18: drained (12 jobs terminal) in 10s
+group 19: submitted 12 of 12; waiting for drain (<= 1800s)
+group 19: drained (12 jobs terminal) in 10s
+group 20: submitted 12 of 12; waiting for drain (<= 1800s)
+group 20: drained (12 jobs terminal) in 17s
+group 21: submitted 12 of 12; waiting for drain (<= 1800s)
+group 21: drained (12 jobs terminal) in 17s
+group 22: submitted 12 of 12; waiting for drain (<= 1800s)
+group 22: drained (12 jobs terminal) in 10s
+group 23: submitted 12 of 12; waiting for drain (<= 1800s)
+group 23: drained (12 jobs terminal) in 17s
+group 24: submitted 12 of 12; waiting for drain (<= 1800s)
+group 24: drained (12 jobs terminal) in 9s
+group 25: submitted 12 of 12; waiting for drain (<= 1800s)
+group 25: drained (12 jobs terminal) in 17s
+group 26: submitted 12 of 12; waiting for drain (<= 1800s)
+group 26: drained (12 jobs terminal) in 10s
+group 27: submitted 12 of 12; waiting for drain (<= 1800s)
+group 27: drained (12 jobs terminal) in 17s
+group 28: submitted 12 of 12; waiting for drain (<= 1800s)
+group 28: drained (12 jobs terminal) in 10s
+group 29: submitted 12 of 12; waiting for drain (<= 1800s)
+group 29: drained (12 jobs terminal) in 9s
+group 30: submitted 12 of 12; waiting for drain (<= 1800s)
+group 30: drained (12 jobs terminal) in 10s
+group 31: submitted 12 of 12; waiting for drain (<= 1800s)
+group 31: drained (12 jobs terminal) in 10s
+group 32: submitted 12 of 12; waiting for drain (<= 1800s)
+group 32: drained (12 jobs terminal) in 10s
+group 33: submitted 12 of 12; waiting for drain (<= 1800s)
+group 33: drained (12 jobs terminal) in 10s
+group 34: submitted 12 of 12; waiting for drain (<= 1800s)
+group 34: drained (12 jobs terminal) in 10s
+group 35: submitted 12 of 12; waiting for drain (<= 1800s)
+group 35: drained (12 jobs terminal) in 17s
+group 36: submitted 12 of 12; waiting for drain (<= 1800s)
+group 36: drained (12 jobs terminal) in 17s
+group 37: submitted 12 of 12; waiting for drain (<= 1800s)
+group 37: drained (12 jobs terminal) in 17s
+group 38: submitted 12 of 12; waiting for drain (<= 1800s)
+group 38: drained (12 jobs terminal) in 10s
+group 39: submitted 12 of 12; waiting for drain (<= 1800s)
+group 39: drained (12 jobs terminal) in 10s
+group 40: submitted 12 of 12; waiting for drain (<= 1800s)
+group 40: drained (12 jobs terminal) in 10s
+group 41: submitted 12 of 12; waiting for drain (<= 1800s)
+group 41: drained (12 jobs terminal) in 10s
+group 42: submitted 12 of 12; waiting for drain (<= 1800s)
+group 42: drained (12 jobs terminal) in 17s
+group 43: submitted 12 of 12; waiting for drain (<= 1800s)
+group 43: drained (12 jobs terminal) in 17s
+group 44: submitted 12 of 12; waiting for drain (<= 1800s)
+group 44: drained (12 jobs terminal) in 10s
+group 45: submitted 12 of 12; waiting for drain (<= 1800s)
+group 45: drained (12 jobs terminal) in 17s
+group 46: submitted 12 of 12; waiting for drain (<= 1800s)
+group 46: drained (12 jobs terminal) in 17s
+group 47: submitted 12 of 12; waiting for drain (<= 1800s)
+group 47: drained (12 jobs terminal) in 18s
+group 48: submitted 12 of 12; waiting for drain (<= 1800s)
+group 48: drained (12 jobs terminal) in 10s
+group 49: submitted 12 of 12; waiting for drain (<= 1800s)
+group 49: drained (12 jobs terminal) in 17s
+group 50: submitted 12 of 12; waiting for drain (<= 1800s)
+group 50: drained (12 jobs terminal) in 10s
+group 51: submitted 12 of 12; waiting for drain (<= 1800s)
+group 51: drained (12 jobs terminal) in 10s
+batch jobs submitted (grouped) ok=624 of 624 (52 prefix-groups, tag=lt10-Aprime-r1)
+LT8_CELL {"cell": "Aprime", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.9133, "effective_R": 12.0, "e2e_latency_p50_s": 6, "e2e_latency_p90_s": 7, "per_replica_share_fraction": {"vllm-llama3-batch-79575f79b8-6rnbv": 0.269, "vllm-llama3-batch-79575f79b8-bzfst": 0.212, "vllm-llama3-batch-79575f79b8-fjbht": 0.365, "vllm-llama3-batch-79575f79b8-vb9dh": 0.154}}
+LT8_GATES {"n_start": 4, "n_end": 4, "gate_replicas_ge2_stable": true, "claim_count_sum": 624, "infra_rejections_sum": 0, "real_gpu_runs": 624, "gate_infra_rejections_zero": true, "dlq_depth": 0, "gate_dlq_empty": true, "statuses": {"complete": 624}, "gate_reconciliation_clean": true}
+  batch replicas visible: 4
+>> cold cache via unique per-cell salt (lt8_cell.py sets SALT=tag); replicas stay loaded
+  batch replicas visible: 4
+>> LT-10 cell Aprime (grouped) rep 2 -> loadtest/results/lt10/cell_Aprime_r2.json
+group 0: submitted 12 of 12; waiting for drain (<= 1800s)
+group 0: drained (12 jobs terminal) in 10s
+group 1: submitted 12 of 12; waiting for drain (<= 1800s)
+group 1: drained (12 jobs terminal) in 10s
+group 2: submitted 12 of 12; waiting for drain (<= 1800s)
+group 2: drained (12 jobs terminal) in 10s
+group 3: submitted 12 of 12; waiting for drain (<= 1800s)
+group 3: drained (12 jobs terminal) in 10s
+group 4: submitted 12 of 12; waiting for drain (<= 1800s)
+group 4: drained (12 jobs terminal) in 10s
+group 5: submitted 12 of 12; waiting for drain (<= 1800s)
+group 5: drained (12 jobs terminal) in 10s
+group 6: submitted 12 of 12; waiting for drain (<= 1800s)
+group 6: drained (12 jobs terminal) in 10s
+group 7: submitted 12 of 12; waiting for drain (<= 1800s)
+group 7: drained (12 jobs terminal) in 10s
+group 8: submitted 12 of 12; waiting for drain (<= 1800s)
+group 8: drained (12 jobs terminal) in 10s
+group 9: submitted 12 of 12; waiting for drain (<= 1800s)
+group 9: drained (12 jobs terminal) in 10s
+group 10: submitted 12 of 12; waiting for drain (<= 1800s)
+group 10: drained (12 jobs terminal) in 10s
+group 11: submitted 12 of 12; waiting for drain (<= 1800s)
+group 11: drained (12 jobs terminal) in 10s
+group 12: submitted 12 of 12; waiting for drain (<= 1800s)
+group 12: drained (12 jobs terminal) in 10s
+group 13: submitted 12 of 12; waiting for drain (<= 1800s)
+group 13: drained (12 jobs terminal) in 10s
+group 14: submitted 12 of 12; waiting for drain (<= 1800s)
+group 14: drained (12 jobs terminal) in 10s
+group 15: submitted 12 of 12; waiting for drain (<= 1800s)
+group 15: drained (12 jobs terminal) in 10s
+group 16: submitted 12 of 12; waiting for drain (<= 1800s)
+group 16: drained (12 jobs terminal) in 10s
+group 17: submitted 12 of 12; waiting for drain (<= 1800s)
+group 17: drained (12 jobs terminal) in 17s
+group 18: submitted 12 of 12; waiting for drain (<= 1800s)
+group 18: drained (12 jobs terminal) in 10s
+group 19: submitted 12 of 12; waiting for drain (<= 1800s)
+group 19: drained (12 jobs terminal) in 10s
+group 20: submitted 12 of 12; waiting for drain (<= 1800s)
+group 20: drained (12 jobs terminal) in 10s
+group 21: submitted 12 of 12; waiting for drain (<= 1800s)
+group 21: drained (12 jobs terminal) in 10s
+group 22: submitted 12 of 12; waiting for drain (<= 1800s)
+group 22: drained (12 jobs terminal) in 10s
+group 23: submitted 12 of 12; waiting for drain (<= 1800s)
+group 23: drained (12 jobs terminal) in 17s
+group 24: submitted 12 of 12; waiting for drain (<= 1800s)
+group 24: drained (12 jobs terminal) in 10s
+group 25: submitted 12 of 12; waiting for drain (<= 1800s)
+group 25: drained (12 jobs terminal) in 17s
+group 26: submitted 12 of 12; waiting for drain (<= 1800s)
+group 26: drained (12 jobs terminal) in 17s
+group 27: submitted 12 of 12; waiting for drain (<= 1800s)
+group 27: drained (12 jobs terminal) in 10s
+group 28: submitted 12 of 12; waiting for drain (<= 1800s)
+group 28: drained (12 jobs terminal) in 10s
+group 29: submitted 12 of 12; waiting for drain (<= 1800s)
+group 29: drained (12 jobs terminal) in 17s
+group 30: submitted 12 of 12; waiting for drain (<= 1800s)
+group 30: drained (12 jobs terminal) in 10s
+group 31: submitted 12 of 12; waiting for drain (<= 1800s)
+group 31: drained (12 jobs terminal) in 10s
+group 32: submitted 12 of 12; waiting for drain (<= 1800s)
+group 32: drained (12 jobs terminal) in 10s
+group 33: submitted 12 of 12; waiting for drain (<= 1800s)
+group 33: drained (12 jobs terminal) in 10s
+group 34: submitted 12 of 12; waiting for drain (<= 1800s)
+group 34: drained (12 jobs terminal) in 10s
+group 35: submitted 12 of 12; waiting for drain (<= 1800s)
+group 35: drained (12 jobs terminal) in 17s
+group 36: submitted 12 of 12; waiting for drain (<= 1800s)
+group 36: drained (12 jobs terminal) in 10s
+group 37: submitted 12 of 12; waiting for drain (<= 1800s)
+group 37: drained (12 jobs terminal) in 10s
+group 38: submitted 12 of 12; waiting for drain (<= 1800s)
+group 38: drained (12 jobs terminal) in 10s
+group 39: submitted 12 of 12; waiting for drain (<= 1800s)
+group 39: drained (12 jobs terminal) in 10s
+group 40: submitted 12 of 12; waiting for drain (<= 1800s)
+group 40: drained (12 jobs terminal) in 10s
+group 41: submitted 12 of 12; waiting for drain (<= 1800s)
+group 41: drained (12 jobs terminal) in 10s
+group 42: submitted 12 of 12; waiting for drain (<= 1800s)
+group 42: drained (12 jobs terminal) in 10s
+group 43: submitted 12 of 12; waiting for drain (<= 1800s)
+group 43: drained (12 jobs terminal) in 17s
+group 44: submitted 12 of 12; waiting for drain (<= 1800s)
+group 44: drained (12 jobs terminal) in 10s
+group 45: submitted 12 of 12; waiting for drain (<= 1800s)
+group 45: drained (12 jobs terminal) in 17s
+group 46: submitted 12 of 12; waiting for drain (<= 1800s)
+group 46: drained (12 jobs terminal) in 10s
+group 47: submitted 12 of 12; waiting for drain (<= 1800s)
+group 47: drained (12 jobs terminal) in 17s
+group 48: submitted 12 of 12; waiting for drain (<= 1800s)
+group 48: drained (12 jobs terminal) in 10s
+group 49: submitted 12 of 12; waiting for drain (<= 1800s)
+group 49: drained (12 jobs terminal) in 17s
+group 50: submitted 12 of 12; waiting for drain (<= 1800s)
+group 50: drained (12 jobs terminal) in 10s
+group 51: submitted 12 of 12; waiting for drain (<= 1800s)
+group 51: drained (12 jobs terminal) in 10s
+batch jobs submitted (grouped) ok=624 of 624 (52 prefix-groups, tag=lt10-Aprime-r2)
+LT8_CELL {"cell": "Aprime", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.9133, "effective_R": 12.0, "e2e_latency_p50_s": 6, "e2e_latency_p90_s": 7, "per_replica_share_fraction": {"vllm-llama3-batch-79575f79b8-6rnbv": 0.25, "vllm-llama3-batch-79575f79b8-bzfst": 0.269, "vllm-llama3-batch-79575f79b8-fjbht": 0.231, "vllm-llama3-batch-79575f79b8-vb9dh": 0.25}}
+LT8_GATES {"n_start": 4, "n_end": 4, "gate_replicas_ge2_stable": true, "claim_count_sum": 624, "infra_rejections_sum": 0, "real_gpu_runs": 624, "gate_infra_rejections_zero": true, "dlq_depth": 0, "gate_dlq_empty": true, "statuses": {"complete": 624}, "gate_reconciliation_clean": true}
+  batch replicas visible: 4
+>> cold cache via unique per-cell salt (lt8_cell.py sets SALT=tag); replicas stay loaded
+  batch replicas visible: 4
+>> LT-10 cell Bprime (interleaved) rep 1 -> loadtest/results/lt10/cell_Bprime_r1.json
+batch jobs submitted ok=624 of 624 (52 prefix-groups, tag=lt10-Bprime-r1)
+LT8_CELL {"cell": "Bprime", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.2469, "effective_R": 12.0, "e2e_latency_p50_s": 252, "e2e_latency_p90_s": 444, "per_replica_share_fraction": {"vllm-llama3-batch-79575f79b8-6rnbv": 0.255, "vllm-llama3-batch-79575f79b8-bzfst": 0.248, "vllm-llama3-batch-79575f79b8-fjbht": 0.256, "vllm-llama3-batch-79575f79b8-vb9dh": 0.24}}
+LT8_GATES {"n_start": 4, "n_end": 4, "gate_replicas_ge2_stable": true, "claim_count_sum": 624, "infra_rejections_sum": 0, "real_gpu_runs": 624, "gate_infra_rejections_zero": true, "dlq_depth": 0, "gate_dlq_empty": true, "statuses": {"complete": 624}, "gate_reconciliation_clean": true}
+  batch replicas visible: 4
+>> cold cache via unique per-cell salt (lt8_cell.py sets SALT=tag); replicas stay loaded
+  batch replicas visible: 4
+>> LT-10 cell Bprime (interleaved) rep 2 -> loadtest/results/lt10/cell_Bprime_r2.json
+batch jobs submitted ok=624 of 624 (52 prefix-groups, tag=lt10-Bprime-r2)
+LT8_CELL {"cell": "Bprime", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.2399, "effective_R": 12.0, "e2e_latency_p50_s": 253, "e2e_latency_p90_s": 435, "per_replica_share_fraction": {"vllm-llama3-batch-79575f79b8-6rnbv": 0.264, "vllm-llama3-batch-79575f79b8-bzfst": 0.24, "vllm-llama3-batch-79575f79b8-fjbht": 0.252, "vllm-llama3-batch-79575f79b8-vb9dh": 0.244}}
+LT8_GATES {"n_start": 4, "n_end": 4, "gate_replicas_ge2_stable": true, "claim_count_sum": 624, "infra_rejections_sum": 0, "real_gpu_runs": 624, "gate_infra_rejections_zero": true, "dlq_depth": 0, "gate_dlq_empty": true, "statuses": {"complete": 624}, "gate_reconciliation_clean": true}
+  batch replicas visible: 4
+=== LT-10 summary: sign vs LT-8 ===
+LT-10 grouped(A') mean hit: 0.9133 | interleaved(B') mean hit: 0.2434
+LT-8 reference: grouped 0.9135 > interleaved 0.000 (COMPLEMENTS)
+LT-10 sign: grouped > interleaved (MATCHES LT-8)
+loadtest/run_lt10.sh: line 118: 67497 Terminated: 15          kubectl -n $NS port-forward svc/submit-api 8080:8080 > /dev/null 2>&1
+>> per-cell JSON in loadtest/results/lt10/ ; captures in loadtest/results/lt10/capture/ ; fill LT-10-REPORT.md
+scaledobject.keda.sh/vllm-llama3-batch annotated
+scaledobject.keda.sh/async-worker annotated

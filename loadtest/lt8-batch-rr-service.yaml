@@ -1,0 +1,23 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# LT-8 batch-tier round-robin baseline (MEASUREMENT ONLY, delete at teardown).
+# A plain ClusterIP Service over the SAME batch vLLM pods the Endpoint Picker serves, so the
+# gateway can load-balance across them cache-blind (Envoy round-robin, no prefix scoring). Both
+# LT-8 arms enter through the same gateway (hop-equalized): the difference is only the scorer.
+# Modelled on loadtest/lt2-rr-service.yaml, but ClusterIP (reached via the gateway, not an
+# external LB) to match the gateway-equalized publication pattern.
+#
+# NOTE: the batch Deployment already ships a Service named `vllm-llama3-batch`; this is a
+# separate, clearly-named, removable test object so the RR arm is self-contained and the
+# production Service is left untouched.
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama3-batch-rr
+  namespace: inference
+  labels: { app: vllm-llama3, tier: batch, lt8: rr-baseline }
+spec:
+  type: ClusterIP
+  selector: { app: vllm-llama3, tier: batch }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }

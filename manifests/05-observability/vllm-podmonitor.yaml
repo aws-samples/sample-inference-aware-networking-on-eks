@@ -1,0 +1,38 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Prometheus scrape config for vLLM, plus a stable `prometheus` service alias.
+# The PodMonitor scrapes each vLLM pod's :8000/metrics and copies the pod's `tier`
+# label onto every metric (podTargetLabels), so queries like
+# vllm:num_requests_waiting{tier="batch"} (KEDA, design 11) resolve per tier.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: vllm
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: vllm-llama3
+  podMetricsEndpoints:
+    - port: http          # the container port named http (8000)
+      path: /metrics
+      interval: 15s
+  podTargetLabels:
+    - tier                # interactive | batch | premium, onto every metric
+  # PREMIUM NEEDS NO MONITOR OF ITS OWN. The selector above is app=vllm-llama3, which is
+  # exactly the premium Deployment's pod label, so premium is scraped by this monitor from
+  # the moment it exists. The Neuron tier has a separate monitor only because its app label
+  # differs (app=vllm-neuron), not because each tier is expected to bring its own.
+---
+# Stable alias so KEDA's http://prometheus.monitoring:9090 resolves regardless of
+# the kube-prometheus-stack release name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  type: ExternalName
+  externalName: kps-kube-prometheus-stack-prometheus.monitoring.svc.cluster.local
+  ports:
+    - { name: http, port: 9090, targetPort: 9090 }

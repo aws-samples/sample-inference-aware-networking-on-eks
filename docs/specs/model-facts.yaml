@@ -1,0 +1,324 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# THE MODEL-FACTS REGISTRY. Machine-readable, and the authority INV18 checks against.
+#
+# Ruling 4 item 2, 2026-08-06. THIS file is the part of the model facts a script can read, because
+# a fact that only exists in prose cannot gate anything.
+#
+# WHY A REGISTRY AND NOT A CONSTANT IN THE CODE. The 24-row call-site audit found exactly one
+# defective site, and the reassuring shape of that finding hides the real risk: the audit is a
+# DIAGNOSIS, and a diagnosis does not prevent the 25th site from choosing wrongly. What prevents it
+# is a place where "which endpoints is this model allowed to be addressed through" is written down
+# once and checked mechanically.
+#
+# EVERY FIELD IS MEASURED OR READ FROM THE MODEL'S OWN CONFIG. The instrument is named beside each
+# group. Where a fact could not be established on this machine it says UNVERIFIED and says why,
+# rather than carrying a plausible value.
+
+schema_version: 1
+
+# The union of endpoints any model in this repository may legitimately be addressed through.
+# An endpoint literal appearing anywhere in the tree that is NOT in this list is an invented path,
+# which is the failure INV18 half 2 catches.
+known_endpoints:
+  - /v1/chat/completions
+  - /v1/completions
+  - /v1/models
+  - /metrics
+  - /health
+
+models:
+
+  # -------------------------------------------------------------------------------------------
+  tinyllama-1.1b-chat:
+    hf_id: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+    role: economy tier until spec-002 (2026-09-21), retired
+    # INSTRUMENT: the local Hugging Face snapshot directory name, which IS the commit hash the
+    # weights were resolved from. Read 2026-08-06.
+    revision: fe8a4ea1ffedaf415f4da2f062534de366a451e6
+    revision_source: "local HF snapshot dir, ~/.cache/huggingface/hub, read 2026-08-06"
+    revision_pinned_in_manifest: false
+    revision_pin_note: >-
+      manifests/02-serving/vllm-neuron.yaml names the model WITHOUT a revision, so a deploy resolves
+      whatever `main` points at. Recorded as a gap rather than fixed here: pinning it changes a
+      serving manifest and belongs to a bring-up change, not to a registry commit.
+    instruction_tuned: true
+
+    # INSTRUMENT: tokenizer_config.json in the snapshot above, verbatim. Whitespace preserved,
+    # including the newlines inside the quoted literals, because those newlines ARE the template.
+    chat_template: |
+      {% for message in messages %}
+      {% if message['role'] == 'user' %}
+      {{ '<|user|>
+      ' + message['content'] + eos_token }}
+      {% elif message['role'] == 'system' %}
+      {{ '<|system|>
+      ' + message['content'] + eos_token }}
+      {% elif message['role'] == 'assistant' %}
+      {{ '<|assistant|>
+      '  + message['content'] + eos_token }}
+      {% endif %}
+      {% if loop.last and add_generation_prompt %}
+      {{ '<|assistant|>' }}
+      {% endif %}
+      {% endfor %}
+    template_rendering_single_turn: "<|user|>\\nhi</s>\\n<|assistant|>\\n"
+    generation_cue: "<|assistant|>"
+    generation_cue_note: >-
+      Without this trailing cue the model receives a bare fragment with no signal that an assistant
+      turn should follow, and completing with EOS is a reasonable continuation, so a raw prompt to
+      /v1/completions can return an empty answer.
+
+    # INSTRUMENT: transformers AutoTokenizer on this machine, 2026-08-06. Measured, not assumed.
+    bos_token: "<s>"
+    bos_token_id: 1
+    eos_token: "</s>"
+    eos_token_id: 2
+    template_emits_bos: false
+    bos_measurement: >-
+      apply_chat_template(tokenize=True) on a one-turn conversation yields 16 tokens beginning
+      529 ('<|'), with NO <s>. Re-tokenising the rendered string yields 17 tokens beginning 1
+      ('<s>'). So the template does not emit BOS and the tokenizer adds one when the string is
+      tokenised as ordinary text.
+
+    valid_endpoints: [/v1/chat/completions, /v1/completions, /v1/models, /metrics, /health]
+    content_generation_endpoint: /v1/chat/completions
+    content_generation_note: >-
+      /v1/completions is VALID (the server accepts it and it is the right endpoint for a base model)
+      and is NEVER CORRECT FOR READING ANSWER CONTENT from this model, because this model is
+      instruction tuned. The two properties are different and the registry keeps them apart: `valid`
+      is about the server, `content_generation_endpoint` is about the measurement.
+    served_by: []
+    served_by_note: >-
+      NO LONGER SERVED as of spec-002 (2026-09-21); the economy tier is Qwen3-1.7B. The entry is
+      RETAINED rather than deleted because earlier measurements in this repository were taken on
+      this model, so its facts remain the authority for them.
+
+  # -------------------------------------------------------------------------------------------
+  llama-3.1-8b-instruct:
+    hf_id: NousResearch/Meta-Llama-3.1-8B-Instruct
+    role: standard tier, interactive and batch pools
+    revision: d10aef7999a2b5ba950ab3974312feeedbfe0b77
+    revision_source: "local HF snapshot dir, ~/.cache/huggingface/hub, read 2026-08-06"
+    revision_pinned_in_manifest: false
+    revision_pin_note: >-
+      Same gap as the economy model. Recorded, not silently fixed.
+    mirror_note: >-
+      ungated same-weights mirror of meta-llama/Llama-3.1-8B-Instruct. "Same weights" is the
+      mirror's claim and is not independently verified here.
+    instruction_tuned: true
+
+    chat_template: |
+      {% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>
+
+      '+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{{ '<|start_header_id|>assistant<|end_header_id|>
+
+      ' }}
+    template_rendering_single_turn: "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nhi<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n"
+    generation_cue: "<|start_header_id|>assistant<|end_header_id|>"
+
+    bos_token: "<|begin_of_text|>"
+    bos_token_id: 128000
+    eos_token: "<|eot_id|>"
+    eos_token_id: 128009
+    template_emits_bos: true
+    # THE TRAP, MEASURED. This is a second, independent reason never to apply a template
+    # client-side, and it is a stronger reason than the drift argument.
+    bos_measurement: >-
+      apply_chat_template(tokenize=True) yields 11 tokens beginning 128000 ('<|begin_of_text|>'),
+      emitted BY THE TEMPLATE. Re-tokenising the rendered string yields 12 tokens beginning
+      128000, 128000: a DOUBLED begin-of-text. A client that renders the template itself and posts
+      the string to /v1/completions therefore feeds this model two BOS tokens, silently, with no
+      blank answer to announce it. TinyLlama's version of this defect returns an empty answer; this
+      one does not.
+
+    valid_endpoints: [/v1/chat/completions, /v1/completions, /v1/models, /metrics, /health]
+    content_generation_endpoint: /v1/chat/completions
+    content_generation_note: >-
+      See bos_measurement. The failure mode here is doubled BOS and degraded prose rather than an
+      empty string, so it is invisible to any check that looks for blanks.
+    served_by: []
+    served_by_note: >-
+      NO LONGER SERVED as of spec-002 (2026-09-21); the standard tier is Qwen3-8B on both
+      lanes. RETAINED rather than deleted for the same reason as tinyllama: the published
+      Llama measurement series was produced on this model, so its facts remain the
+      authority for that data.
+
+  # -------------------------------------------------------------------------------------------
+  # THE THREE QWEN3 MODELS, spec-002. Added 2026-09-21.
+  #
+  # ALL THREE SHARE EVERY TOKENIZER FACT: same vocabulary, same specials, same template, same
+  # overhead. That is a property of the family rather than a copy-paste, and it is recorded per
+  # model anyway because INV18 half one enumerates models from the serving manifests and a shared
+  # fact that lives in only one entry cannot gate the other two.
+  #
+  # THE BOS SPLIT, which is the fact worth reading. Llama-3.1's template emits <|begin_of_text|>
+  # itself and DOUBLES it when a client renders the template and posts the string. Qwen3 has NO BOS
+  # TOKEN AT ALL, so it sits on TinyLlama's side of that split: the doubled-BOS trap cannot occur
+  # here. That does not make client-side templating safe, it removes one of the two reasons it is
+  # unsafe.
+
+  qwen3-1.7b:
+    hf_id: Qwen/Qwen3-1.7B
+    role: economy tier (spec-002), on AWS Inferentia2, replacing TinyLlama-1.1B-Chat
+    revision: 70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+    revision_source: "Hugging Face model API, read 2026-09-20"
+    revision_pinned_in_manifest: true
+    revision_pin_note: >-
+      Pinned with --revision in the serving manifest, closing the gap this registry recorded for
+      both incumbent models. Pre-check A served this exact revision on inf2.xlarge.
+    instruction_tuned: true
+    chat_template_source: "tokenizer_config.json at the pinned revision, rendered via apply_chat_template"
+    chat_template: "Qwen3 ChatML. Rendered forms below; the jinja source is in tokenizer_config.json at the pinned revision."
+    template_rendering_single_turn: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n"
+    template_rendering_single_turn_no_think: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    generation_cue: "<|im_start|>assistant"
+    bos_token: null
+    bos_token_id: null
+    eos_token: "<|im_end|>"
+    eos_token_id: 151645
+    pad_token: "<|endoftext|>"
+    pad_token_id: 151643
+    template_emits_bos: false
+    bos_measurement: >-
+      transformers AutoTokenizer at the pinned revision, 2026-09-21: bos_token is None, so there is
+      no BOS to emit or to double. Contrast llama-3.1-8b-instruct above, whose template emits
+      <|begin_of_text|> and yields 128000,128000 when the rendered string is re-tokenised.
+    template_overhead_tokens: {n: 5, min: 8, max: 8}
+    template_overhead_tokens_no_think: {n: 5, min: 12, max: 12}
+    template_overhead_instrument: "the shipped templates and the tokenizer at the pinned revision, on five self-written single-turn prompts of 1 to 661 content tokens, 2026-11-09"
+    template_overhead_note: >-
+      A CONSTANT, the same at every content length measured. Qwen3's template wraps content in a fixed <|im_start|>/<|im_end|> frame with no
+      content-dependent tokens, so the overhead is a constant rather than a distribution.
+      AND THE COUNTERINTUITIVE PART THE FEASIBILITY MARGIN MUST BUDGET: disabling thinking makes the
+      PROMPT LONGER, by the +4 empty <think></think> block the template injects into the assistant
+      prefix. The margin budgets 12, not 8.
+    vocab_size: 151643
+    len_tokenizer: 151669
+    config_vocab_size: 151936
+    vocab_note: "the three figures reconcile: tokenizer base, plus added specials, then padded in config.json"
+    valid_endpoints: [/v1/chat/completions, /v1/completions, /v1/models, /metrics, /health]
+    content_generation_endpoint: /v1/chat/completions
+    content_generation_note: >-
+      Instruction tuned, so /v1/completions is valid to the server and never correct for reading
+      answer content. Additionally: with thinking enabled the model emits <think> INLINE IN content
+      with no reasoning_content field (measured on Neuron vLLM 0.13.0 and GPU vLLM 0.24.0 alike), so
+      any consumer reading content without the non-thinking template receives reasoning text as
+      though it were the answer.
+    # MOVED TO L4 on 2026-09-23 (the maintainer's L4 branch ruling). The model and its pinned revision are
+    # unchanged; only the substrate moved, after experiment 2 stage 1 diagnosed multi-slot degeneracy
+    # on the legacy Neuron plugin line (spikes/experiment-2-neuron-stage1-2026-09-23/RESULT.md).
+    # vllm-neuron.yaml is retained as DRY-RUN-EXEMPT reference: it is the exact configuration the
+    # period-4 and KV-metric findings were measured against, so deleting it deletes their provenance.
+    served_by: [manifests/02-serving/vllm-economy.yaml]
+
+  qwen3-8b:
+    hf_id: Qwen/Qwen3-8B
+    role: standard tier (spec-002), interactive on L40S and batch on L4, replacing Llama-3.1-8B
+    revision: b968826d9c46dd6066d109eabc6255188de91218
+    revision_source: "Hugging Face model API, read 2026-09-20"
+    revision_pinned_in_manifest: true
+    revision_pin_note: "Pinned with --revision in the serving manifests, closing the recorded gap."
+    instruction_tuned: true
+    chat_template_source: "tokenizer_config.json at the pinned revision, rendered via apply_chat_template"
+    chat_template: "Qwen3 ChatML, identical to qwen3-1.7b. Jinja source in tokenizer_config.json at the pinned revision."
+    template_rendering_single_turn: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n"
+    template_rendering_single_turn_no_think: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    generation_cue: "<|im_start|>assistant"
+    bos_token: null
+    bos_token_id: null
+    eos_token: "<|im_end|>"
+    eos_token_id: 151645
+    pad_token: "<|endoftext|>"
+    pad_token_id: 151643
+    template_emits_bos: false
+    bos_measurement: "as qwen3-1.7b: bos_token is None, measured 2026-09-21."
+    template_overhead_tokens: {n: 5, min: 8, max: 8}
+    template_overhead_tokens_no_think: {n: 5, min: 12, max: 12}
+    template_overhead_instrument: "the shipped templates and the tokenizer at the pinned revision, on five self-written single-turn prompts of 1 to 661 content tokens, 2026-11-09"
+    vocab_size: 151643
+    len_tokenizer: 151669
+    config_vocab_size: 151936
+    measured_kv_cache_l4: {num_gpu_blocks: 1504, block_size: 16, tokens: 24064, instrument: "pre-check B, g6.xlarge, vllm:cache_config_info, 2026-09-21"}
+    measured_kv_cache_note: >-
+      MEASURED, and it is the constant every overflow ratio is defined against: C = 24,064 on L4,
+      21.7 percent less than Llama-3.1-8B's 30,736 on the same GPU. The L40S figure (~171,000) is
+      still DERIVED and must be read from num_gpu_blocks during the routing four-regimes run.
+    valid_endpoints: [/v1/chat/completions, /v1/completions, /v1/models, /metrics, /health]
+    content_generation_endpoint: /v1/chat/completions
+    content_generation_note: "as qwen3-1.7b, including the inline <think> hazard."
+    served_by: [manifests/02-serving/vllm-interactive.yaml, manifests/02-serving/vllm-batch.yaml]
+
+  qwen3-32b-awq:
+    hf_id: Qwen/Qwen3-32B-AWQ
+    role: premium tier (spec-002), L40S ONLY. The reserved class goes live.
+    revision: 0499c3ac83fdef8810b907a23894ba91e95eddd8
+    revision_source: "Hugging Face model API, read 2026-09-20"
+    revision_pinned_in_manifest: true
+    revision_pin_note: "Pinned with --revision in the serving manifest."
+    instruction_tuned: true
+    quantization: "AWQ 4-bit, group_size 128, gemm, zero_point true (config.json quantization_config)"
+    hardware_constraint: >-
+      L40S ONLY, and by arithmetic rather than preference: 19.33 GB of weights leave about 4,000
+      tokens of KV on a 24 GB L4, which cannot host a prefix-caching experiment, against about
+      85,000 on a 48 GB L40S. The same-model-per-class rule then makes 32B unusable as the standard
+      class.
+    chat_template_source: "tokenizer_config.json at the pinned revision, rendered via apply_chat_template"
+    chat_template: "Qwen3 ChatML, identical to qwen3-1.7b and qwen3-8b."
+    template_rendering_single_turn: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n"
+    template_rendering_single_turn_no_think: "<|im_start|>user\nhi<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    generation_cue: "<|im_start|>assistant"
+    bos_token: null
+    bos_token_id: null
+    eos_token: "<|im_end|>"
+    eos_token_id: 151645
+    pad_token: "<|endoftext|>"
+    pad_token_id: 151643
+    template_emits_bos: false
+    bos_measurement: "as qwen3-1.7b: bos_token is None, measured 2026-09-21."
+    template_overhead_tokens: {n: 5, min: 8, max: 8}
+    template_overhead_tokens_no_think: {n: 5, min: 12, max: 12}
+    template_overhead_instrument: "the shipped templates and the tokenizer at the pinned revision, on five self-written single-turn prompts of 1 to 661 content tokens, 2026-11-09"
+    vocab_size: 151643
+    len_tokenizer: 151669
+    config_vocab_size: 151936
+    valid_endpoints: [/v1/chat/completions, /v1/completions, /v1/models, /metrics, /health]
+    content_generation_endpoint: /v1/chat/completions
+    content_generation_note: "as qwen3-1.7b, including the inline <think> hazard."
+    served_by: [manifests/02-serving/vllm-premium.yaml]
+    max_model_len: 32768
+    max_model_len_note: >-
+      the maintainer's ruling 2, 2026-09-21. The capability ladder is 2,048 / 8,192 / 32,768, and this rung
+      flips the 8,193-to-32,768 band from unservable to servable through the relay's existing
+      cheapest-class-that-fits loop. 16,384 is the recorded fallback, to be taken only on the
+      num_gpu_blocks measurement and only by a further ruling.
+    measured_kv_cache_l40s: PENDING
+    measured_kv_cache_note: >-
+      DERIVED, NOT MEASURED: 256 KiB/token (64 layers x 8 KV heads x 128 head_dim x 2 x 2 bytes)
+      against a ~22.3 GB budget gives about 85,000 tokens, roughly 2.6 concurrent sequences at
+      32,768. The ruling binds on reading num_gpu_blocks from a live replica and recording it here
+      beside the derivation BEFORE any working set is designed against it. Pre-check B's L4
+      derivation proved 3.8 percent high.
+    admission_note: >-
+      ADMITTED on the interactive lane only. batch+premium is admission-refused but
+      promotion-reachable: the promotion path may re-place an overrunning interactive+premium
+      request as batch+premium (promoted_pair holds capability fixed, 6.9.5) and the worker drives
+      it to this pool carrying x-inference-model-class. Exposure is bounded by construction,
+      because only a request already admitted as interactive+premium can produce a promoted one.
+
+# ---------------------------------------------------------------------------------------------
+# WHAT COULD NOT BE ESTABLISHED ON THIS MACHINE, recorded rather than guessed (prime directive 7).
+unverified:
+  - fact: "whether vLLM's chat endpoint double-adds BOS for llama-3.1-8b-instruct"
+    why: >-
+      The template emits bos_token itself, so the question is whether vLLM tokenises the rendered
+      string with add_special_tokens=False. That is a property of the SERVER at its pinned version,
+      not of the tokenizer, and it cannot be observed without a running vLLM. Both served models
+      answered coherently in every live run, which is weak evidence against a serious problem and is
+      NOT a measurement.
+    how_to_settle: >-
+      With a replica up: POST one prompt to the chat endpoint and read prompt_tokens from the usage
+      block, then compare against the local tokenizer's apply_chat_template(tokenize=True) length.
+      A difference of exactly one is a doubled BOS. Costs one request.
+  - fact: "the Neuron fork's tokenisation path is identical to upstream vLLM's"
+    why: "the DLC ships the AWS fork of vLLM, and fork-versus-upstream parity is not assumed here."

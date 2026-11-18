@@ -1,0 +1,8 @@
+{"accelerator":"nvidia","node_instance_type":"g6e.xlarge","gpu":"NVIDIA L40S (48GB), 1 per g6e.xlarge node (g6e carries L40S; L4 is on g6/g5)","replicas":4,
+"replica_placement":"4 replicas on 4 SEPARATE g6e.xlarge nodes, each replica (TP=1) on its own dedicated L40S GPU; GPUs are not shared across replicas",
+"model":"NousResearch/Meta-Llama-3.1-8B-Instruct","model_revision":"d10aef7999a2b5ba950ab3974312feeedbfe0b77",
+"vllm_image":"public.ecr.aws/deep-learning-containers/vllm:0.24.0-gpu-py312-cu130-ubuntu22.04-ec2-v1.3-soci",
+"tensor_parallel_size":1,"max_model_len":8192,"enable_prefix_caching":true,"gpu_memory_utilization":0.9,
+"routing_on_backend":"InferencePool vllm-llama3-interactive + EPP vllm-llama3-epp","routing_off_backend":"Service vllm-llama3-interactive (Envoy cache-blind LB)",
+"both_arms_through_gateway":true,
+"correction_note":"config previously said NVIDIA L4; corrected to L40S (g6e). The leftover g6.12xlarge seen at teardown carried L4 and was an unrelated batch-tier remnant from the LT-3 phase."}

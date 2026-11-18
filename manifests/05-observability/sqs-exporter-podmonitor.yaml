@@ -1,0 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Scrape the direct SQS depth exporter (async-worker/sqs-exporter.yaml): the real queue state,
+# both visible (waiting) and in-flight (being processed). This is the queue-state source for the
+# Request Flow dashboard, replacing the vLLM waiting-requests proxy. INVARIANT 8: namespace inference.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: sqs-exporter
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: sqs-exporter
+  podMetricsEndpoints:
+    - port: metrics        # containerPort 9101
+      path: /metrics
+      interval: 15s        # match the exporter poll interval

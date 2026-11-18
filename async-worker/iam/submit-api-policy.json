@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SubmitApiEnqueues",
+      "Effect": "Allow",
+      "Action": ["sqs:SendMessage"],
+      "Resource": "${QUEUE_ARN}"
+    },
+    {
+      "Sid": "SubmitApiReadsJobState",
+      "Effect": "Allow",
+      "Action": ["dynamodb:GetItem"],
+      "Resource": "${TABLE_ARN}"
+    }
+  ]
+}

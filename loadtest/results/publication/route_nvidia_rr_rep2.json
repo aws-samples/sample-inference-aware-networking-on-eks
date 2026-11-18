@@ -1,0 +1,100 @@
+{
+  "label": "nvidia_rr_rep2",
+  "arm": "rr",
+  "replicas": 4,
+  "replica_pods": [
+    "vllm-llama3-interactive-5cd8f76f55-47czx",
+    "vllm-llama3-interactive-5cd8f76f55-5bbw5",
+    "vllm-llama3-interactive-5cd8f76f55-b7gkl",
+    "vllm-llama3-interactive-5cd8f76f55-bf8mw"
+  ],
+  "steady_seconds": 301.4,
+  "concurrency": 8,
+  "requests_ok": 1585,
+  "requests_failed": 0,
+  "prefix_cache_hits": 2969648.0,
+  "prefix_cache_queries": 3326915.0,
+  "prefix_cache_hit_rate": 0.8926,
+  "ttft_p50_s": 0.4392,
+  "ttft_p90_s": 0.5599,
+  "ttft_n": 1585,
+  "inter_token_latency_p50_s": 0.0225,
+  "inter_token_latency_p90_s": 0.023,
+  "throughput_gen_tokens_per_s": 252.4,
+  "mean_colocation_concentration": 0.389,
+  "per_group_colocation": [
+    {
+      "group": 0,
+      "per_pod": {
+        "vllm-llama3-interactive-5cd8f76f55-47czx": 4.0,
+        "vllm-llama3-interactive-5cd8f76f55-5bbw5": 1.0,
+        "vllm-llama3-interactive-5cd8f76f55-b7gkl": 3.0,
+        "vllm-llama3-interactive-5cd8f76f55-bf8mw": 1.0
+      },
+      "concentration": 0.444
+    },
+    {
+      "group": 1,
+      "per_pod": {
+        "vllm-llama3-interactive-5cd8f76f55-47czx": 3.0,
+        "vllm-llama3-interactive-5cd8f76f55-5bbw5": 1.0,
+        "vllm-llama3-interactive-5cd8f76f55-b7gkl": 4.0,
+        "vllm-llama3-interactive-5cd8f76f55-bf8mw": 1.0
+      },
+      "concentration": 0.444
+    },
+    {
+      "group": 2,
+      "per_pod": {
+        "vllm-llama3-interactive-5cd8f76f55-47czx": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-5bbw5": 1.0,
+        "vllm-llama3-interactive-5cd8f76f55-b7gkl": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-bf8mw": 4.0
+      },
+      "concentration": 0.444
+    },
+    {
+      "group": 3,
+      "per_pod": {
+        "vllm-llama3-interactive-5cd8f76f55-47czx": 1.0,
+        "vllm-llama3-interactive-5cd8f76f55-5bbw5": 3.0,
+        "vllm-llama3-interactive-5cd8f76f55-b7gkl": 3.0,
+        "vllm-llama3-interactive-5cd8f76f55-bf8mw": 2.0
+      },
+      "concentration": 0.333
+    },
+    {
+      "group": 4,
+      "per_pod": {
+        "vllm-llama3-interactive-5cd8f76f55-47czx": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-5bbw5": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-b7gkl": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-bf8mw": 3.0
+      },
+      "concentration": 0.333
+    },
+    {
+      "group": 5,
+      "per_pod": {
+        "vllm-llama3-interactive-5cd8f76f55-47czx": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-5bbw5": 3.0,
+        "vllm-llama3-interactive-5cd8f76f55-b7gkl": 2.0,
+        "vllm-llama3-interactive-5cd8f76f55-bf8mw": 2.0
+      },
+      "concentration": 0.333
+    }
+  ],
+  "per_replica_request_share": {
+    "vllm-llama3-interactive-5cd8f76f55-47czx": 410.0,
+    "vllm-llama3-interactive-5cd8f76f55-5bbw5": 397.0,
+    "vllm-llama3-interactive-5cd8f76f55-b7gkl": 409.0,
+    "vllm-llama3-interactive-5cd8f76f55-bf8mw": 369.0
+  },
+  "per_replica_share_fraction": {
+    "vllm-llama3-interactive-5cd8f76f55-47czx": 0.259,
+    "vllm-llama3-interactive-5cd8f76f55-5bbw5": 0.25,
+    "vllm-llama3-interactive-5cd8f76f55-b7gkl": 0.258,
+    "vllm-llama3-interactive-5cd8f76f55-bf8mw": 0.233
+  },
+  "preemptions_during_run": 0.0
+}

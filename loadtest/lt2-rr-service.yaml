@@ -1,0 +1,22 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# LT-2 round-robin baseline. A Service over the interactive vLLM pods that distributes requests
+# across all 4 replicas with NO EPP and NO prefix awareness (plain round-robin). Compared against the
+# EPP path (through the gateway) on the same prefix-heavy workload. Temporary: delete after LT-2.
+#
+# ClusterIP, NOT a LoadBalancer. The recorded LT-2 run (2026-07-21) used the pre-relay topology, in
+# which this Service and the gateway were both internet-facing load balancers in front of
+# unauthenticated vLLM pods. A copy of that shape would hand anyone an open inference endpoint, so it
+# is no longer the shape in this file, and INV12 now scans loadtest/ so a LoadBalancer here fails.
+# loadtest/run_lt2.sh is kept as the record of that run and stops on the current topology. The
+# supported successor of this comparison is loadtest/run_exp3.sh (both arms through the gateway).
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-interactive-rr
+  namespace: inference
+spec:
+  type: ClusterIP
+  selector: { app: vllm-llama3, tier: interactive }
+  ports:
+    - { name: http, port: 80, targetPort: 8000 }

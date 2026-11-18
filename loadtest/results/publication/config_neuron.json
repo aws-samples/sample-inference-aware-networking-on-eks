@@ -1,0 +1,7 @@
+{"accelerator":"neuron","node_instance_type":"inf2.24xlarge","replicas":4,
+"model":"NousResearch/Meta-Llama-3.1-8B-Instruct","model_revision":"d10aef7999a2b5ba950ab3974312feeedbfe0b77",
+"dlc_image":"public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.31.0-ubuntu24.04",
+"tensor_parallel_size":2,"max_model_len":2048,"max_num_seqs":8,
+"pc_on":{"enable_prefix_caching":true,"block_size":32,"num_gpu_blocks_override":512,"num_gpu_blocks_live":513,"cache_tokens_approx":16416},
+"note":"initial config max_model_len=4096/blocks=1500 crash-looped (neuronx-cc SIGHUP, device memory); conservative 2048/512 serves cleanly",
+"both_arms_through_gateway":true}

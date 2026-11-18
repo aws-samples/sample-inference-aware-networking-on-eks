@@ -1,0 +1,157 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# ZERO-GPU PROMOTION HARNESS. Not part of the deployed system; applied for a verification run and
+# deleted after. It is committed because the technique is the point: this project has now twice
+# proven a timeout-driven behaviour with no accelerator by building the one condition the behaviour
+# needs and nothing else.
+#
+# WHAT IS BEING PROVEN AND WHY IT NEEDS A STUB. Promotion fires when the upstream does not answer
+# within P. The real pools currently answer INSTANTLY with 503, because they have no endpoints, so
+# the deadline can never arrive: an immediate failure is not a slow success. The stub supplies the
+# missing condition, an upstream that accepts a request and then never answers, which is exactly
+# what a long generation looks like from the relay's side.
+#
+# What this does NOT prove, stated so the evidence is not over-read: that abandonment actually frees
+# a sequence slot on a serving replica. There is no replica. That is INV13's territory and it needs
+# the one GPU authorization.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: promotion-stub
+  namespace: inference
+  labels:
+    app: promotion-stub
+    inference-aware-eks/ephemeral: "true"   # never part of a deployed topology
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: promotion-stub
+  template:
+    metadata:
+      labels:
+        app: promotion-stub
+    spec:
+      securityContext:
+        # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+      containers:
+        - name: stub
+          image: public.ecr.aws/docker/library/python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30   # pinned in versions.yaml (worker_base_image)
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          env:
+            - { name: HOME, value: /tmp }
+          command: ["python", "-c"]
+          args:
+            - |
+              # Accept, read the request, and NEVER RESPOND. The socket stays open, which is what
+              # makes the relay's own timeout the thing that ends the exchange, and therefore what
+              # makes the connection close observable as the abandonment mechanism.
+              import socket, threading
+              srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+              srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+              srv.bind(("", 8000)); srv.listen(64)
+              print("hanging stub listening on :8000, will never answer", flush=True)
+              def hold(c, addr):
+                  try:
+                      c.recv(65536)          # consume the request so the client believes it landed
+                      print(f"accepted and holding {addr}", flush=True)
+                      threading.Event().wait()   # never respond, never close
+                  except Exception:
+                      pass
+              while True:
+                  c, addr = srv.accept()
+                  threading.Thread(target=hold, args=(c, addr), daemon=True).start()
+          ports:
+            - containerPort: 8000
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: promotion-stub
+  namespace: inference
+  labels:
+    app: promotion-stub
+    inference-aware-eks/ephemeral: "true"
+spec:
+  type: ClusterIP          # NOT LoadBalancer: INV12 permits exactly one external door, the relay's
+  selector:
+    app: promotion-stub
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+# A SECOND relay, pointed at the stub with a short deadline. The deployed relay is left untouched:
+# mutating the real one would mean the verification and the system under test are the same object,
+# and restoring it afterwards would be a step that could silently fail.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: relay-promotest
+  namespace: inference
+  labels:
+    app: relay-promotest
+    inference-aware-eks/ephemeral: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: relay-promotest
+  template:
+    metadata:
+      labels:
+        app: relay-promotest
+    spec:
+      serviceAccountName: inference-relay
+      securityContext:
+        # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+      containers:
+        - name: relay
+          image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-62d6b6e13814
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: ["python", "relay_server.py"]
+          env:
+            - { name: HOME, value: /tmp }   # writable home on a read-only root
+            # P = 5 s, ONLY here. The committed P is 120 s and is unchanged; five seconds makes the
+            # deadline observable in a test run without changing what the system ships with. The
+            # MECHANISM is identical, only the constant differs, and the constant is the one thing
+            # already proven correct by arithmetic rather than by observation.
+            - name: PROMOTION_DEADLINE_SECONDS
+              value: "5"
+            - name: GATEWAY_ENDPOINT
+              value: "http://envoy-inference-inference-gateway-2e466d4a.envoy-gateway-system.svc.cluster.local"
+            - name: RELAY_UPSTREAM_TIMEOUT_SECONDS
+              value: "630"
+            - name: SQS_QUEUE_URL
+              value: "https://sqs.us-west-2.amazonaws.com/111122223333/inference"
+            - name: AWS_DEFAULT_REGION
+              value: "us-west-2"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }

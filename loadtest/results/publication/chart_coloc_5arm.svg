@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="320" font-family="sans-serif">
+<text x="280.0" y="22" text-anchor="middle" font-size="15" font-weight="bold">Co-location concentration (1.0 = group on one replica)</text>
+<line x1="56" y1="264" x2="544" y2="264" stroke="#999"/>
+<rect x="56" y="46.0" width="80" height="218.0" fill="#2a7"/>
+<text x="96.0" y="40.0" text-anchor="middle" font-size="12" font-weight="bold">1</text>
+<text x="96.0" y="280" text-anchor="middle" font-size="10">NVIDIA</text>
+<text x="96.0" y="293" text-anchor="middle" font-size="10">EPP</text>
+<rect x="170" y="179.19799999999998" width="80" height="84.802" fill="#c73"/>
+<text x="210.0" y="173.19799999999998" text-anchor="middle" font-size="12" font-weight="bold">0.389</text>
+<text x="210.0" y="280" text-anchor="middle" font-size="10">NVIDIA</text>
+<text x="210.0" y="293" text-anchor="middle" font-size="10">RR</text>
+<rect x="284" y="46.0" width="80" height="218.0" fill="#57a"/>
+<text x="324.0" y="40.0" text-anchor="middle" font-size="12" font-weight="bold">1</text>
+<text x="324.0" y="280" text-anchor="middle" font-size="10">Neuron</text>
+<text x="324.0" y="293" text-anchor="middle" font-size="10">EPP</text>
+<rect x="398" y="179.19799999999998" width="80" height="84.802" fill="#e39"/>
+<text x="438.0" y="173.19799999999998" text-anchor="middle" font-size="12" font-weight="bold">0.389</text>
+<text x="438.0" y="280" text-anchor="middle" font-size="10">Neuron</text>
+<text x="438.0" y="293" text-anchor="middle" font-size="10">RR</text>
+</svg>

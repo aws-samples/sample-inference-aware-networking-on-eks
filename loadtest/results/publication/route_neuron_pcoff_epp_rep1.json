@@ -1,0 +1,100 @@
+{
+  "label": "neuron_pcoff_epp_rep1",
+  "arm": "neuron-epp",
+  "replicas": 4,
+  "replica_pods": [
+    "vllm-llama3-neuron-69fcd696-cphnf",
+    "vllm-llama3-neuron-69fcd696-j4kwh",
+    "vllm-llama3-neuron-69fcd696-pf6pj",
+    "vllm-llama3-neuron-69fcd696-tctpv"
+  ],
+  "steady_seconds": 182.9,
+  "concurrency": 8,
+  "requests_ok": 423,
+  "requests_failed": 0,
+  "prefix_cache_hits": 0.0,
+  "prefix_cache_queries": 0.0,
+  "prefix_cache_hit_rate": null,
+  "ttft_p50_s": 0.8239,
+  "ttft_p90_s": 1.5957,
+  "ttft_n": 423,
+  "inter_token_latency_p50_s": 0.052,
+  "inter_token_latency_p90_s": 0.0608,
+  "throughput_gen_tokens_per_s": 111.0,
+  "mean_colocation_concentration": 0.444,
+  "per_group_colocation": [
+    {
+      "group": 0,
+      "per_pod": {
+        "vllm-llama3-neuron-69fcd696-cphnf": 2.0,
+        "vllm-llama3-neuron-69fcd696-j4kwh": 1.0,
+        "vllm-llama3-neuron-69fcd696-pf6pj": 3.0,
+        "vllm-llama3-neuron-69fcd696-tctpv": 3.0
+      },
+      "concentration": 0.333
+    },
+    {
+      "group": 1,
+      "per_pod": {
+        "vllm-llama3-neuron-69fcd696-cphnf": 2.0,
+        "vllm-llama3-neuron-69fcd696-j4kwh": 4.0,
+        "vllm-llama3-neuron-69fcd696-pf6pj": 2.0,
+        "vllm-llama3-neuron-69fcd696-tctpv": 1.0
+      },
+      "concentration": 0.444
+    },
+    {
+      "group": 2,
+      "per_pod": {
+        "vllm-llama3-neuron-69fcd696-cphnf": 2.0,
+        "vllm-llama3-neuron-69fcd696-j4kwh": 2.0,
+        "vllm-llama3-neuron-69fcd696-pf6pj": 5.0,
+        "vllm-llama3-neuron-69fcd696-tctpv": 0.0
+      },
+      "concentration": 0.556
+    },
+    {
+      "group": 3,
+      "per_pod": {
+        "vllm-llama3-neuron-69fcd696-cphnf": 0.0,
+        "vllm-llama3-neuron-69fcd696-j4kwh": 3.0,
+        "vllm-llama3-neuron-69fcd696-pf6pj": 3.0,
+        "vllm-llama3-neuron-69fcd696-tctpv": 3.0
+      },
+      "concentration": 0.333
+    },
+    {
+      "group": 4,
+      "per_pod": {
+        "vllm-llama3-neuron-69fcd696-cphnf": 1.0,
+        "vllm-llama3-neuron-69fcd696-j4kwh": 2.0,
+        "vllm-llama3-neuron-69fcd696-pf6pj": 2.0,
+        "vllm-llama3-neuron-69fcd696-tctpv": 4.0
+      },
+      "concentration": 0.444
+    },
+    {
+      "group": 5,
+      "per_pod": {
+        "vllm-llama3-neuron-69fcd696-cphnf": 1.0,
+        "vllm-llama3-neuron-69fcd696-j4kwh": 2.0,
+        "vllm-llama3-neuron-69fcd696-pf6pj": 1.0,
+        "vllm-llama3-neuron-69fcd696-tctpv": 5.0
+      },
+      "concentration": 0.556
+    }
+  ],
+  "per_replica_request_share": {
+    "vllm-llama3-neuron-69fcd696-cphnf": 94.0,
+    "vllm-llama3-neuron-69fcd696-j4kwh": 111.0,
+    "vllm-llama3-neuron-69fcd696-pf6pj": 97.0,
+    "vllm-llama3-neuron-69fcd696-tctpv": 121.0
+  },
+  "per_replica_share_fraction": {
+    "vllm-llama3-neuron-69fcd696-cphnf": 0.222,
+    "vllm-llama3-neuron-69fcd696-j4kwh": 0.262,
+    "vllm-llama3-neuron-69fcd696-pf6pj": 0.229,
+    "vllm-llama3-neuron-69fcd696-tctpv": 0.286
+  },
+  "preemptions_during_run": 0.0
+}

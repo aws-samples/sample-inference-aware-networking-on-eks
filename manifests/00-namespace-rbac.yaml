@@ -1,0 +1,55 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Namespace and service accounts. INVARIANT 8: everything lives in `inference`.
+# The async-worker SA carries the IRSA annotation binding it to the IAM role in
+# async-worker/iam/. Without it the worker cannot call SQS or DynamoDB.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inference
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vllm
+  namespace: inference
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: epp
+  namespace: inference
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: async-worker
+  namespace: inference
+  # Auth is via EKS Pod Identity (association created by
+  # infra/addons/setup-async-infra.sh binding this SA to role
+  # inference-async-worker), so no IRSA annotation is needed.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: submit-api
+  namespace: inference
+  # Pod Identity association -> inference-submit-api role (SQS SendMessage, DynamoDB GetItem).
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: inference-relay
+  namespace: inference
+  # Pod Identity association -> inference-relay role (SQS SendMessage only, for the promotion
+  # re-enqueue). Created by infra/addons/setup-async-infra.sh.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sweeper
+  namespace: inference
+  # Orphan sweeper (DESIGN.md 3.4). Pod Identity association -> the least-privilege
+  # role inference-sweeper (DynamoDB Scan+UpdateItem, SQS SendMessage+GetQueueAttributes),
+  # created by infra/addons/setup-sweeper.sh. This is the ONLY component that scans the
+  # job table, so it is the only one granted Scan.

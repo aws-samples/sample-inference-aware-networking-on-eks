@@ -1,0 +1,34 @@
+{
+  "cell": "VAL",
+  "arm": "epp",
+  "mode": "grouped",
+  "salt": "valEPP",
+  "P": 6,
+  "R_requested": 8,
+  "prefix_reps": 214,
+  "replicas": 4,
+  "n_start": 4,
+  "n_end": 4,
+  "requests_sent": 48,
+  "requests_ok": 48,
+  "prefix_cache_hits": 252000.0,
+  "prefix_cache_queries": 288912.0,
+  "prefix_cache_hit_rate": 0.8722,
+  "requests_counted": 48.0,
+  "effective_R": 8.0,
+  "per_replica_share": {
+    "vllm-llama3-batch-79575f79b8-57vzh": 8.0,
+    "vllm-llama3-batch-79575f79b8-7fdzm": 16.0,
+    "vllm-llama3-batch-79575f79b8-kfmp4": 24.0,
+    "vllm-llama3-batch-79575f79b8-mdd8s": 0.0
+  },
+  "per_replica_share_fraction": {
+    "vllm-llama3-batch-79575f79b8-57vzh": 0.167,
+    "vllm-llama3-batch-79575f79b8-7fdzm": 0.333,
+    "vllm-llama3-batch-79575f79b8-kfmp4": 0.5,
+    "vllm-llama3-batch-79575f79b8-mdd8s": 0.0
+  },
+  "e2e_latency_p50_s": 5.811,
+  "e2e_latency_p90_s": 6.206,
+  "max_concentration_fraction": 0.5
+}

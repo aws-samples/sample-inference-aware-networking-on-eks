@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="320" font-family="sans-serif">
+<text x="300.0" y="22" text-anchor="middle" font-size="15" font-weight="bold">NVIDIA TTFT p90 (regime 2): EPP lowers the tail</text>
+<text x="300.0" y="40" text-anchor="middle" font-size="11" fill="#666">17% / ~96ms lower</text>
+<line x1="56" y1="262" x2="584" y2="262" stroke="#999"/>
+<rect x="56" y="119.06971428571427" width="78" height="142.93028571428573" fill="#2a7"/>
+<text x="95.0" y="113.06971428571427" text-anchor="middle" font-size="12" font-weight="bold">0.4632s</text>
+<text x="95.0" y="277" text-anchor="middle" font-size="10">EPP</text>
+<rect x="164" y="89.38514285714285" width="78" height="172.61485714285715" fill="#c73"/>
+<text x="203.0" y="83.38514285714285" text-anchor="middle" font-size="12" font-weight="bold">0.5594s</text>
+<text x="203.0" y="277" text-anchor="middle" font-size="10">RR</text>
+</svg>

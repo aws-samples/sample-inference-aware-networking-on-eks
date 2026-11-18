@@ -1,0 +1,63 @@
+{
+  "uid": "inference-request-journey",
+  "title": "Inference-Aware EKS: Request Journey",
+  "tags": ["loadtest", "trace", "routing"],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "10s",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Journey: long requests queue, drain, land on the correct tier, interactive stays flat",
+      "type": "row",
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2,
+      "title": "Queue depth over the run (async front door)",
+      "description": "The async queue building and draining while long requests are in flight. keda_scaler_metrics_value is KEDA's observed SQS depth (async-worker scaler). vllm:num_requests_waiting{tier=batch} is the batch tier's in-cluster serving queue. The authoritative SQS-depth series for the proof is the committed CSV loadtest/results/phasec_queue_depth.csv.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 15 }, "unit": "short" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "max(keda_scaler_metrics_value{scaledObject=~\"async-worker\"})", "legendFormat": "SQS queue depth (KEDA)" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(vllm:num_requests_waiting{tier=\"batch\"})", "legendFormat": "batch serving queue (vLLM waiting)" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Per-tier backend request rate (batch vs interactive pods)",
+      "description": "Which tier is actually serving. Long queued requests drive the batch tier; a concurrent interactive load drives the interactive tier. The two never cross.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 15 }, "unit": "reqps" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(vllm:e2e_request_latency_seconds_count{tier=\"batch\"}[1m]))", "legendFormat": "batch tier req/s" },
+        { "refId": "B", "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum(rate(vllm:e2e_request_latency_seconds_count{tier=\"interactive\"}[1m]))", "legendFormat": "interactive tier req/s" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Interactive TTFT p95 (stays flat under the batch queue load)",
+      "description": "Server-side time-to-first-token for the interactive tier, p95. It stays flat while the batch queue builds and drains, showing tier isolation holds during the routing proof.",
+      "type": "timeseries",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 17 },
+      "fieldConfig": { "defaults": { "custom": { "drawStyle": "line", "fillOpacity": 10 }, "unit": "s" }, "overrides": [] },
+      "targets": [
+        { "refId": "A", "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(vllm:time_to_first_token_seconds_bucket{tier=\"interactive\"}[2m])) by (le))", "legendFormat": "interactive TTFT p95" }
+      ]
+    }
+  ]
+}

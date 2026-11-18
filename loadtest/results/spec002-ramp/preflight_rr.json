@@ -1,0 +1,39 @@
+{
+  "cell": "PF",
+  "arm": "rr",
+  "mode": "grouped",
+  "salt": "pf-rr-1790189624",
+  "P": 4,
+  "R_requested": 12,
+  "prefix_reps": 67,
+  "replicas": 4,
+  "n_start": 4,
+  "n_end": 4,
+  "requests_sent": 48,
+  "requests_ok": 0,
+  "prefix_cache_hits": 0.0,
+  "prefix_cache_queries": 0.0,
+  "prefix_cache_hit_rate": null,
+  "requests_counted": 0.0,
+  "effective_R": 0.0,
+  "per_replica_share": {
+    "vllm-llama3-batch-5785d6769-726mf": 0.0,
+    "vllm-llama3-batch-5785d6769-hmxhx": 0.0,
+    "vllm-llama3-batch-5785d6769-snpcd": 0.0,
+    "vllm-llama3-batch-5785d6769-t5xwh": 0.0
+  },
+  "per_replica_share_fraction": {
+    "vllm-llama3-batch-5785d6769-726mf": 0.0,
+    "vllm-llama3-batch-5785d6769-hmxhx": 0.0,
+    "vllm-llama3-batch-5785d6769-snpcd": 0.0,
+    "vllm-llama3-batch-5785d6769-t5xwh": 0.0
+  },
+  "e2e_latency_p50_s": 75.003,
+  "e2e_latency_p90_s": 75.047,
+  "max_concentration_fraction": 0.0,
+  "integrity": "FAILED",
+  "integrity_problems": [
+    "only 0/48 requests succeeded (0.0% < 95%); a hit rate over mostly-failed requests is not a measurement",
+    "zero prefix-cache queries recorded; nothing was measured"
+  ]
+}

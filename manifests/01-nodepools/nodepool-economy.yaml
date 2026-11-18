@@ -1,0 +1,65 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# NodePool, economy tier, L4, On-Demand. Added 2026-09-23 (the maintainer's L4 branch ruling, 2a).
+#
+# WHY THIS EXISTS AT ALL: the economy tier moved off Inferentia2. Experiment 2 stage 1 diagnosed
+# multi-slot degeneracy on the legacy Neuron plugin line (vLLM 0.13.0, SDK 2.28): at
+# --max-num-seqs 4 only requests 1 and 5 of 8 were legible, a period-4 slot signature with SILENT
+# corruption; at --max-num-seqs 1 all 8 were legible and byte-identical. Serialising the server is
+# a fix that removes continuous batching, so cost-per-token collapses and the tier loses the reason
+# it exists. Economy exists for economics. Record:
+# spikes/experiment-2-neuron-stage1-2026-09-23/RESULT.md
+#
+# ITS OWN NODEPOOL EVEN THOUGH BATCH IS ALSO L4 NOW, and that is deliberate rather than tidy.
+# Physical fleet isolation (Option A) is a headline result of this architecture: LT-4 measured it,
+# and Gate A proves it per request from the node label. Economy sharing batch's nodes would make
+# the isolation claim untrue for one pair of tiers while every document still asserted it.
+#
+# INVARIANT 5: the nvidia.com/gpu taint pairs with the Deployment toleration.
+#
+# g6 ONLY (L4, 24 GB). Qwen3-1.7B is small; the class is bounded by CONTRACT, not by the card (see
+# vllm-economy.yaml). g6e is excluded so economy cannot silently consume L40S capacity the premium
+# and interactive tiers need, and g5 is excluded because the batch tier already diversifies there.
+#
+# SIZE BOUNDED to xlarge|2xlarge, the class fix applied to every GPU NodePool on 2026-09-22 after an
+# unbounded pool took a 4xlarge for a single GPU. Same availability-for-price trade, recorded there.
+#
+# ON-DEMAND ONLY: Spot cannot work in this account at all (AuthFailure.
+# ServiceLinkedRoleCreationNotPermitted, measured in pre-check A), so pinning on-demand skips a
+# guaranteed failure rather than expressing a preference.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: gpu-economy
+spec:
+  template:
+    metadata:
+      labels:
+        tier: economy
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: gpu
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: NoSchedule
+      requirements:
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["g6"]         # L4 24 GB. NOT g6e: economy must not consume L40S capacity.
+        # WIDENED 2026-09-24, same ruling and same reason as the interactive and batch pools: the
+        # xlarge|2xlarge bound traded availability for price and the trade came due here too. The
+        # economy baseline replica sat Pending 17 minutes against a g6 shortage this admits around.
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["xlarge", "2xlarge", "4xlarge", "12xlarge"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]  # Spot is unauthorized in this account, not merely unavailable
+  limits:
+    nvidia.com/gpu: "2"          # bounded: one replica today, one spare for a rolling check
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s

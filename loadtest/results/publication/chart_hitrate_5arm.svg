@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" font-family="sans-serif">
+<text x="320.0" y="22" text-anchor="middle" font-size="14" font-weight="bold">Prefix-cache hit rate, 48 prefixes (EPP vs round-robin)</text>
+<text x="320.0" y="38" text-anchor="middle" font-size="10.5" fill="#666">NVIDIA: cache (195k) HOLDS the ~100k working set; gap is cold-start replication (RR warms each prefix on all 4 replicas)</text>
+<text x="320.0" y="51" text-anchor="middle" font-size="10.5" fill="#666">Neuron: cache (16k) OVERFLOWED by the 58k working set; gap is eviction</text>
+<line x1="56" y1="262" x2="624" y2="262" stroke="#999"/>
+<rect x="56" y="57.79599999999999" width="76" height="204.204" fill="#2a7"/>
+<text x="94.0" y="51.79599999999999" text-anchor="middle" font-size="12" font-weight="bold">0.9724</text>
+<text x="94.0" y="277" text-anchor="middle" font-size="10">NVIDIA</text>
+<text x="94.0" y="289" text-anchor="middle" font-size="10">EPP</text>
+<rect x="158" y="74.57500000000002" width="76" height="187.42499999999998" fill="#c73"/>
+<text x="196.0" y="68.57500000000002" text-anchor="middle" font-size="12" font-weight="bold">0.8925</text>
+<text x="196.0" y="277" text-anchor="middle" font-size="10">NVIDIA</text>
+<text x="196.0" y="289" text-anchor="middle" font-size="10">RR</text>
+<rect x="260" y="209.269" width="76" height="52.730999999999995" fill="#2a7"/>
+<text x="298.0" y="203.269" text-anchor="middle" font-size="12" font-weight="bold">0.2511</text>
+<text x="298.0" y="277" text-anchor="middle" font-size="10">Neuron</text>
+<text x="298.0" y="289" text-anchor="middle" font-size="10">EPP</text>
+<rect x="362" y="229.618" width="76" height="32.382" fill="#c73"/>
+<text x="400.0" y="223.618" text-anchor="middle" font-size="12" font-weight="bold">0.1542</text>
+<text x="400.0" y="277" text-anchor="middle" font-size="10">Neuron</text>
+<text x="400.0" y="289" text-anchor="middle" font-size="10">RR</text>
+</svg>

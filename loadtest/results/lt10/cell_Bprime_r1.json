@@ -1,0 +1,58 @@
+{
+  "cell": "Bprime",
+  "arm": "epp",
+  "mode": "interleaved",
+  "tag": "lt10-Bprime-r1",
+  "P_distinct_prefixes": 52,
+  "N_total_jobs": 624,
+  "prefix_reps_L": 214,
+  "replicas": 4,
+  "replica_pods": [
+    "vllm-llama3-batch-79575f79b8-6rnbv",
+    "vllm-llama3-batch-79575f79b8-bzfst",
+    "vllm-llama3-batch-79575f79b8-fjbht",
+    "vllm-llama3-batch-79575f79b8-vb9dh"
+  ],
+  "prefix_cache_hits": 933808.0,
+  "prefix_cache_queries": 3781816.0,
+  "prefix_cache_hit_rate": 0.2469,
+  "requests_counted": 624.0,
+  "effective_R": 12.0,
+  "per_replica_request_share": {
+    "vllm-llama3-batch-79575f79b8-6rnbv": 159.0,
+    "vllm-llama3-batch-79575f79b8-bzfst": 155.0,
+    "vllm-llama3-batch-79575f79b8-fjbht": 160.0,
+    "vllm-llama3-batch-79575f79b8-vb9dh": 150.0
+  },
+  "per_replica_share_fraction": {
+    "vllm-llama3-batch-79575f79b8-6rnbv": 0.255,
+    "vllm-llama3-batch-79575f79b8-bzfst": 0.248,
+    "vllm-llama3-batch-79575f79b8-fjbht": 0.256,
+    "vllm-llama3-batch-79575f79b8-vb9dh": 0.24
+  },
+  "e2e_latency_p50_s": 252,
+  "e2e_latency_p90_s": 444,
+  "latency_n": 624,
+  "queue_wait_p50_s": 247,
+  "queue_wait_p90_s": 439,
+  "queue_wait_n": 624,
+  "inference_p50_s": 7,
+  "inference_p90_s": 10,
+  "inference_n": 624,
+  "ttft_note": "not measurable on the async path (worker issues a non-streaming request)",
+  "gates": {
+    "n_start": 4,
+    "n_end": 4,
+    "gate_replicas_ge2_stable": true,
+    "claim_count_sum": 624,
+    "infra_rejections_sum": 0,
+    "real_gpu_runs": 624,
+    "gate_infra_rejections_zero": true,
+    "dlq_depth": 0,
+    "gate_dlq_empty": true,
+    "statuses": {
+      "complete": 624
+    },
+    "gate_reconciliation_clean": true
+  }
+}

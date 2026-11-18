@@ -1,0 +1,72 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Envoy proxy configuration for the inference GatewayClass. It enables an access log whose
+# format pairs the per-request correlation id (x-correlation-id, set by the async worker and
+# by traced synchronous drivers) with the selected upstream host (%UPSTREAM_HOST%, the vLLM
+# pod IP and port the Endpoint Picker chose). This is the authoritative record of which
+# backend served which request, and it is the raw material for the end-to-end per-request
+# trace (loadtest/build_trace.py joins the correlation id to the upstream pod, then to the
+# pod's tier, node, and accelerator).
+#
+# INVARIANT 8: namespace is `inference`. Referenced by the `inference` GatewayClass through
+# its parametersRef (manifests/03-routing/gateway.yaml).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: inference-proxy-config
+  namespace: inference
+spec:
+  # THE EXTERNAL LOAD BALANCER ANNOTATION IS GONE FROM HERE, AND ITS ABSENCE IS THE POINT.
+  #
+  # It was relocated to manifests/08-relay/relay.yaml at the Phase 2 cutover, at an UNCHANGED value
+  # of L = 690. The value itself was decided earlier: it was raised from 600 at the 2026-08-03
+  # rebuild (design v6.2.2 0b A20, v6.2.3 0b A21, ARCHITECTURE-REVIEW.md R.5b) because 600 EQUALLED
+  # the gateway route timeout, and equal values race, so a non-streaming request running to the
+  # ceiling could receive a load balancer error instead of the gateway's own 504 and attribute the
+  # failure to the wrong component. That is the same defect family R.5 corrected on the asynchronous
+  # chain. The cutover MOVED that decision; it did not re-open it.
+  #
+  # THE GATEWAY DATA PLANE IS NOW CLUSTER-INTERNAL, which is the substance of the cutover rather
+  # than a side effect of it. While the gateway was directly addressable, a client could reach the
+  # interactive default rule UNCLASSIFIED and evade classification, the reservation guard and the
+  # upgrade-rate cap, with nothing failing and nothing alerting. INV12 enforces that exactly one
+  # externally exposed Service exists and that it is the relay's.
+  #
+  # The asynchronous worker is unaffected: it always called the gateway at its in-cluster ClusterIP
+  # and never traversed this load balancer.
+  #
+  # THE TYPE IS SET EXPLICITLY, AND REMOVING THE ANNOTATION WOULD NOT HAVE BEEN ENOUGH. Envoy
+  # Gateway defaults `envoyService` to LoadBalancer, so deleting the annotation alone leaves the
+  # data plane just as externally reachable, merely with the AWS default 60s idle timeout instead of
+  # 690. Verified in the live cluster before this line was written: the Service
+  # `envoy-inference-inference-gateway-2e466d4a` was type LoadBalancer with an active external
+  # hostname. An absent annotation is a PROXY for "not externally reachable", and it is a
+  # reassuring one, which is the kind this project distrusts hardest.
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: ClusterIP
+  # TWO FIELDS ADDED 2026-08-04 with the two-header routing.
+  #
+  # modelclass: the capability header. The trace previously recorded only the SLA header, so after
+  # the two-header cutover it could describe one axis of a two-axis decision. A per-request record
+  # missing half the decision cannot attribute a misroute to either axis.
+  #
+  # cluster: %UPSTREAM_CLUSTER%, which is the ENVOY CLUSTER the route selected, and it is what makes
+  # the routing verdict readable WITH NO BACKENDS RUNNING. %UPSTREAM_HOST% is empty when no endpoint
+  # exists, so with zero GPU every request looks identical: a 503 with no host. The cluster is
+  # resolved at route-selection time, before any endpoint is chosen, so it distinguishes "the batch
+  # rule matched" from "the interactive rule matched" while both pools are empty. That is the same
+  # zero-GPU construction the load balancer race used: measure the decision, not the generation.
+  telemetry:
+    accessLog:
+      settings:
+        - format:
+            type: Text
+            text: |
+              REQTRACE cid=%REQ(X-CORRELATION-ID)% objective=%REQ(X-GATEWAY-INFERENCE-OBJECTIVE)% modelclass=%REQ(X-INFERENCE-MODEL-CLASS)% cluster=%UPSTREAM_CLUSTER% method=%REQ(:METHOD)% path=%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% code=%RESPONSE_CODE% upstream=%UPSTREAM_HOST% flags=%RESPONSE_FLAGS% dur=%DURATION% resp_dur=%RESPONSE_DURATION% ust=%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%
+          sinks:
+            - type: File
+              file:
+                path: /dev/stdout

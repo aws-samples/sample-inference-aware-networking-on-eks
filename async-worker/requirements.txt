@@ -1,0 +1,6 @@
+# Baked into the worker image, so pinned exactly: a rebuild installs what was license-reviewed
+# (THIRD-PARTY-LICENSES) and scanned (Trivy, 0 findings, 2026-11-02). Bump deliberately, then
+# rerun make test-offline. tests/test_addon_pins.sh rejects any range.
+boto3==1.43.123
+requests==2.34.2
+prometheus-client==0.26.0

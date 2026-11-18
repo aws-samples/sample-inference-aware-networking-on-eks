@@ -1,0 +1,36 @@
+{
+  "cell": "PF",
+  "arm": "rr",
+  "mode": "grouped",
+  "salt": "pf-rr-1790237343",
+  "P": 4,
+  "R_requested": 12,
+  "prefix_reps": 67,
+  "replicas": 4,
+  "n_start": 4,
+  "n_end": 4,
+  "requests_sent": 48,
+  "requests_ok": 48,
+  "prefix_cache_hits": 60688.0,
+  "prefix_cache_queries": 91976.0,
+  "prefix_cache_hit_rate": 0.6598,
+  "requests_counted": 48.0,
+  "effective_R": 12.0,
+  "per_replica_share": {
+    "10.0.0.1:8000": 16.0,
+    "10.0.0.1:8000": 13.0,
+    "10.0.0.1:8000": 9.0,
+    "10.0.0.1:8000": 10.0
+  },
+  "per_replica_share_fraction": {
+    "10.0.0.1:8000": 0.333,
+    "10.0.0.1:8000": 0.271,
+    "10.0.0.1:8000": 0.188,
+    "10.0.0.1:8000": 0.208
+  },
+  "e2e_latency_p50_s": 2.601,
+  "e2e_latency_p90_s": 2.659,
+  "max_concentration_fraction": 0.333,
+  "integrity": "ok",
+  "integrity_problems": []
+}

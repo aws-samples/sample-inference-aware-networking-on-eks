@@ -1,0 +1,16 @@
+# Everything needed to run the offline test suite and rebuild the documents on a fresh
+# clone. This is what `make venv` installs.
+#
+#   make venv          # creates .venv and installs this file
+#   make test-offline  # the whole GPU-free suite: no cluster, no credentials
+#
+# Deliberately excludes loadtest/requirements.txt: locust is a heavy dependency needed
+# only for the load-test suite, and a reader's first run should not wait for it.
+# Install it separately with `make loadtest-deps`.
+#
+# Every file below is pinned exactly, including async-worker/requirements.txt, which is also
+# baked into the worker image. The offline suite therefore runs against the same direct
+# dependencies the image installs. tests/test_addon_pins.sh rejects any range.
+
+-r async-worker/requirements.txt
+-r tests/requirements.txt

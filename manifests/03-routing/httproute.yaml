@@ -1,0 +1,215 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# HTTPRoute, Option A: physical fleet isolation, routed from the PAIR of headers.
+#
+# UPDATED 2026-08-04 to the two-header format settled by the signed label-scheme decision (option B,
+# D-3 unamended). The pool is selected from the pair, never from either header alone:
+#
+#     x-gateway-inference-objective : SLA class        {batch | interactive}
+#     x-inference-model-class       : capability class {economy | standard | premium}
+#
+# GATEWAY API PRECEDENCE IS NOT LIST ORDER, and this is the defect this project has already paid
+# for once: batch traffic reached the interactive tier because precedence is by LONGEST MATCHING
+# PATH first, then HEADER-MATCH COUNT, and the batch rule was header-only against an interactive
+# rule that matched a longer path. So every rule below matches the SAME `/v1` path, and the tie is
+# broken by header count alone, which is what INV7 asserts per-rule rather than by line number.
+#
+# The resulting order is a consequence of the match sets rather than of their position in this list:
+#
+#     2 headers (sla + capability)  ->  most specific, evaluated first
+#     1 header  (sla only)          ->  next
+#     0 headers (path only)         ->  the catch-all, evaluated last
+#
+# WHICH CELLS ARE ROUTED, and why the fourth is absent. Design section 6.9's matrix has four cells
+# and three pools:
+#
+#   interactive + standard  -> interactive pool   VALID, built            ROUTED HERE
+#   interactive + economy   -> COALESCED UP by the relay to standard      not a route, see 6.9.1
+#   batch       + standard  -> batch pool         VALID, built            ROUTED HERE
+#   batch       + economy   -> neuron pool        VALID BY DESIGN,        DELIBERATELY NOT ROUTED
+#                                                 NOT ROUTABLE YET (9.3)
+#   either      + premium   -> none exists        UNROUTABLE              refused at the relay
+#
+# THE NEURON CELL IS NOT ROUTED HERE, and that is the design's own status for it, not an omission.
+# Section 6.9 marks batch-economy "VALID BY DESIGN, NOT ROUTABLE YET. Needs the whole of section
+# 9.3", and 9.3 is unmet: the tier has no InferencePool, no InferenceObjective, no Endpoint Picker,
+# no KEDA ScaledObject and no cost-safety-net label. Routing to a pool that does not exist would
+# produce a 500 from the data plane and would look like a serving fault rather than a missing tier.
+# Until 9.3 is complete, batch+economy is served by the SLA-only batch rule below, which is the
+# same coalescing-by-configuration section 6.9.4 describes for the 2,048-token constraint.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm-route
+  namespace: inference
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: inference-gateway
+  rules:
+    # ---- TWO-HEADER RULES. Most specific, so they win the tie on header count. ----------------
+    # interactive + standard. The only interactive cell that is served: 6.9.1 coalesces
+    # interactive+economy up to this one at the relay, so it arrives here already labelled standard.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+          headers:
+            - type: Exact
+              name: x-gateway-inference-objective
+              value: interactive
+            - type: Exact
+              name: x-inference-model-class
+              value: standard
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-interactive
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"
+
+    # batch + standard.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+          headers:
+            - type: Exact
+              name: x-gateway-inference-objective
+              value: batch
+            - type: Exact
+              name: x-inference-model-class
+              value: standard
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-batch
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"
+
+    # ---- PREMIUM, TWO RULES, and BOTH are needed. Added 2026-09-21 (the maintainer's ruling 1). -------
+    #
+    # interactive+premium is the ADMITTED cell: a caller may pin it at the relay.
+    #
+    # batch+premium is NOT admittable at the relay and is REACHABLE ONLY BY PROMOTION. It needs a
+    # rule anyway, and leaving it out was the defect in revision 1 of the proposal: an
+    # interactive+premium request that exceeds the 120 s deadline promotes to batch+premium
+    # (promotion.promoted_pair holds capability FIXED, 6.9.5), and the worker then drives it with
+    # objective=batch plus the capability header. Without this rule that job would match the
+    # SLA-only rule below and be served by the STANDARD pool, silently downgrading exactly the
+    # request the capability axis exists to protect.
+    #
+    # PRECEDENCE IS BY HEADER COUNT, NOT LIST ORDER (the defect this project already paid for
+    # once). Both rules match the same /v1 path with TWO headers, so both outrank the one-header
+    # batch rule below deterministically. That is the property INV7 was redesigned to assert.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+          headers:
+            - type: Exact
+              name: x-gateway-inference-objective
+              value: interactive
+            - type: Exact
+              name: x-inference-model-class
+              value: premium
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-premium
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"
+
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+          headers:
+            - type: Exact
+              name: x-gateway-inference-objective
+              value: batch
+            - type: Exact
+              name: x-inference-model-class
+              value: premium
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-premium
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"
+
+    # ---- ECONOMY, ONE RULE. Added 2026-09-23 (the maintainer's L4 branch ruling, 2f). ------------------
+    #
+    # THE DECLARED CONTRACT BEGINS TO BE HONOURED. Until now a caller who pinned batch+economy fell
+    # through to the SLA-only rule below and was served by the STANDARD pool: a silent free upgrade.
+    # Upgrade is the permitted direction, so nothing was broken, but it was UNRECORDED, and a pin
+    # that quietly buys something better is still a pin nobody honoured. From here, what you pin is
+    # what you get, at the limit you were always bounded to: A22 already refused economy pins above
+    # 2,048 tokens AT ADMISSION, so no caller's feasibility changes. Only the serving model does.
+    # This is an ACTIVATION of the declared contract, not a migration: there are no external callers
+    # in this environment and no migration mechanics are needed.
+    #
+    # INTERACTIVE+ECONOMY IS ABSENT AND MUST STAY ABSENT. The relay coalesces it UP to
+    # interactive+standard before admission (6.9.1), because one replica with no ScaledObject cannot
+    # carry a synchronous latency commitment. A rule here would serve a cell the relay never emits.
+    # PRECEDENCE IS BY HEADER COUNT, NOT LIST ORDER: two headers, so this beats the one-header batch
+    # rule below deterministically. That is the property INV7 asserts per rule (check_httproute_precedence).
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+          headers:
+            - type: Exact
+              name: x-gateway-inference-objective
+              value: batch
+            - type: Exact
+              name: x-inference-model-class
+              value: economy
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-economy
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"
+
+    # ---- SLA-ONLY RULE. One header, so it loses to both rules above and beats the catch-all. ----
+    # Where a batch request carrying NO capability header lands. It no longer carries batch+economy:
+    # that pair got its own two-header rule above on 2026-09-23 and now reaches the economy pool. INV9's literal `batch` is matched here exactly,
+    # unchanged by the two-header work, which is what the signed decision preserved.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+          headers:
+            - type: Exact
+              name: x-gateway-inference-objective
+              value: batch
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-batch
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"
+
+    # ---- CATCH-ALL. No headers, so it is strictly least specific and cannot steal from above. ---
+    # Anything that reaches here declared no SLA class. The relay defaults such traffic to batch
+    # before it ever arrives, so in practice this serves only callers that bypassed the relay,
+    # which INV12 exists to make impossible from outside the cluster.
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-interactive
+      timeouts:
+        request: "600s"
+        backendRequest: "600s"

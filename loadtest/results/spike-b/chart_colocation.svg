@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300" font-family="sans-serif">
+<text x="260.0" y="24" text-anchor="middle" font-size="16" font-weight="bold">Co-location concentration (1.0 = group on one replica)</text>
+<line x1="54" y1="250" x2="500" y2="250" stroke="#888"/>
+<rect x="54" y="40.0" width="90" height="210.0" fill="#2a7"/>
+<text x="99.0" y="34.0" text-anchor="middle" font-size="13" font-weight="bold">1</text>
+<text x="99.0" y="268" text-anchor="middle" font-size="12">PC-on EPP</text>
+<rect x="184" y="135.55" width="90" height="114.45" fill="#c73"/>
+<text x="229.0" y="129.55" text-anchor="middle" font-size="13" font-weight="bold">0.545</text>
+<text x="229.0" y="268" text-anchor="middle" font-size="12">PC-on RR</text>
+<rect x="314" y="111.60999999999999" width="90" height="138.39000000000001" fill="#89a"/>
+<text x="359.0" y="105.60999999999999" text-anchor="middle" font-size="13" font-weight="bold">0.659</text>
+<text x="359.0" y="268" text-anchor="middle" font-size="12">PC-off EPP</text>
+</svg>

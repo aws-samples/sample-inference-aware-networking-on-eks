@@ -1,0 +1,72 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# NodePool, premium tier, On-Demand. Added 2026-09-21 (spec-002, the maintainer's ruling 1).
+#
+# INVARIANT 5: the nvidia.com/gpu taint pairs with the Deployment toleration.
+# nodeClassRef requires group and kind since Karpenter v1.1.0.
+#
+# g6e ONLY, AND BY ARITHMETIC RATHER THAN PREFERENCE. Qwen3-32B-AWQ is 19.33 GB of weights and
+# 256 KiB per KV token (64 layers x 8 KV heads x 128 head_dim x 2 x 2 bytes). On a 24 GB L4 that
+# leaves roughly 4,000 tokens of cache, which cannot host a prefix-caching experiment; on a 48 GB
+# L40S it leaves roughly 85,000. So premium is L40S-only because the smaller card cannot hold it,
+# not because the tier is prestigious. NOTE the figure is DERIVED: the binding condition on
+# the maintainer's ruling 2 is that num_gpu_blocks is read from a live replica and recorded beside it
+# before any working set is designed against it.
+#
+# ON-DEMAND ONLY, and this is not the same reason the interactive pool gives. Spot cannot work in
+# this account at all: Karpenter's Spot attempt fails in under four seconds with
+# AuthFailure.ServiceLinkedRoleCreationNotPermitted (the account cannot create
+# AWSServiceRoleForEC2Spot), measured during pre-check A. Pinning on-demand skips a guaranteed
+# failure rather than expressing a preference. See spikes/precheck-a-neuron-qwen3/FINDING-spot-service-linked-role.md
+#
+# ONE REPLICA, NO SCALEDOBJECT, deliberately. Premium ships in economy's committed shape. The
+# reactivation condition for direct batch+premium admission is precisely "premium gains a
+# ScaledObject and more than one replica", so shipping one here would half-satisfy that condition
+# on day one and make it incoherent. KEDA here scales on queue depth, a batch-side signal the
+# premium interactive pool does not have.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: gpu-premium
+spec:
+  template:
+    metadata:
+      labels:
+        tier: premium
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: gpu
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: NoSchedule
+      requirements:
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["g6e"]        # L40S. NOT g6 (L4) or g5 (A10G): see the arithmetic above.
+        # SIZE IS BOUNDED, 2026-09-22, and the gap was a class across all three GPU pools. Each pod
+        # requests only nvidia.com/gpu: 1, and the pool constrained family and capacity type but never
+        # size, so nothing stopped Karpenter taking a larger host for the same single GPU. It did: the
+        # premium bring-up of 2026-09-22 launched g6e.4xlarge (3.00424 USD/hr, AWS Pricing API) where
+        # g6e.xlarge (1.861) carries the identical one L40S. WHY, VERIFIED THE SAME DAY: capacity, not
+        # preference. Karpenter's candidate list that morning lacked g6e.xlarge, and the afternoon
+        # attempt logged seven InsufficientInstanceCapacity failures for xlarge and 2xlarge across
+        # us-west-2a/b/c in 25 minutes before an xlarge launched in 2b. AWS named us-west-2d as having
+        # capacity every time, and this VPC has NO 2d subnet. So the bound trades availability for price:
+        # it can hold a pod Pending during an xlarge/2xlarge shortage that 4xlarge would have ridden out.
+        # That trade is recorded, not hidden (spikes/premium-bringup-2026-09-22/RESULT.md).
+        # ENUMERATED AND DELIBERATELY NOT APPLIED to the Neuron pool: trn2 exists only as 48xlarge, so
+        # a size bound there would silently remove trn2 from the design, which is a design decision.
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["xlarge", "2xlarge"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]  # Spot is unauthorized in this account, not merely unavailable
+  limits:
+    nvidia.com/gpu: "4"          # bounded: one replica today, headroom for a small fleet later
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s

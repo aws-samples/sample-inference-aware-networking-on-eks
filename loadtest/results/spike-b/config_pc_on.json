@@ -1,0 +1,1 @@
+{"arm":"prefix_caching_on","model":"TinyLlama/TinyLlama-1.1B-Chat-v1.0","instance_type":"inf2.24xlarge","tensor_parallel_size":2,"max_model_len":2048,"max_num_seqs":4,"enable_prefix_caching":true,"block_size":32,"num_gpu_blocks_override":256,"dlc_image":"public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.31.0-ubuntu24.04"}

@@ -1,0 +1,18 @@
+>> preflight images: async-worker=111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-313f6d149c7e submit-api=111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-313f6d149c7e
+=== [1/4] submit 40 jobs ===
+batch jobs submitted ok=40 of 40 (4 prefix-groups, tag=lt9-1790343853)
+=== [2/4] batch inference-path outage for 900s (scale batch EPP to 0) ===
+deployment.apps/vllm-llama3-batch-epp scaled
+   DLQ depth at end of 900s outage: 1 (expect 0 post-B.1; >0 means the horizon was crossed)
+=== [3/4] restore the EPP, drain to completion ===
+deployment.apps/vllm-llama3-batch-epp scaled
+Waiting for deployment "vllm-llama3-batch-epp" rollout to finish: 0 of 1 updated replicas are available...
+deployment "vllm-llama3-batch-epp" successfully rolled out
+drained 40/40
+=== [4/4] verdict (envelope + exactly-once gates) ===
+sed: 1: "s/^/   sweeper orphan/e ...": bad flag in substitute command: 'e'
+LT9_VERDICT {"K": 40, "statuses": {"complete": 40}, "zero_loss": true, "no_job_failed": true, "dlq_at_outage_end": 1, "dlq_now": 1, "zero_dlq": false, "claim_count_sum": 80, "infra_rejections_sum": 40, "real_gpu_runs": 40, "exactly_once": true, "outage_seconds": 900, "time_to_drain_s": 917, "horizon_note": "horizon crossed inside 900s: 1 messages reached the DLQ (recoverable by redrive)"}
+LT-9: SEE VERDICT (envelope crossed or a gate failed; report as measured, do not patch mid-run)
+>> queue-depth series: loadtest/results/lt9/queue_depth.csv ; verdict: loadtest/results/lt9/LT-9-verdict.json ; fill LT-9-REPORT.md
+loadtest/run_lt9.sh: line 149:  5058 Terminated: 15          kubectl -n $NS port-forward svc/submit-api 8080:8080 > /dev/null 2>&1
+loadtest/run_lt9.sh: line 149:  5059 Terminated: 15          sampler

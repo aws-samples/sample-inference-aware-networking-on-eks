@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.env
+/tmp/
+kubeconfig*
+.venv/
+.lt11-creds.env
+.lt11-kubeconfig
+.DS_Store
+.commitmsg*.txt
+
+# PRESENTATION DECKS ARE NEVER UPLOADED. Ruled 2026-09-20. These arrive by hand for review, carry
+# internal material, and are large enough (the All Hands deck is 60 MB) that a single `git add -A`
+# would write one into history on both remotes permanently. Ignored by extension rather than by
+# path, because the next one will have a different name.
+*.pptx
+*.ppt
+
+# internal working drafts (agent prompts, plans, unpublished post drafts) - never commit
+docs/_working/
+.gate-failures/
+.efficacy.lock/

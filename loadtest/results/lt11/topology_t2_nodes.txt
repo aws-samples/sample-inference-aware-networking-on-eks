@@ -1,0 +1,6 @@
+ip-10-0-0-1.ec2.internal g6.xlarge
+ip-10-0-0-1.ec2.internal g6.xlarge
+ip-10-0-0-1.ec2.internal g6.xlarge
+ip-10-0-0-1.ec2.internal g6.xlarge
+ip-10-0-0-1.ec2.internal m6i.xlarge
+ip-10-0-0-1.ec2.internal m6i.xlarge

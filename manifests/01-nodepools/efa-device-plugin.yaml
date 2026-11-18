@@ -1,0 +1,10 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# EFA device plugin (NOT DRA). The EFA DRA driver is not supported with Karpenter
+# or EKS Auto Mode; use the device plugin. Install via the AWS EKS chart. This
+# manifest is a placeholder marker; prefer the Helm chart at the pinned version.
+# helm repo add eks https://aws.github.io/eks-charts
+# helm install aws-efa-k8s-device-plugin eks/aws-efa-k8s-device-plugin -n kube-system
+#
+# MOFED trap: confirm the plugin version and the MOFED default against the AWS EKS
+# EFA device management docs before trusting it; this is the least-verified pin.

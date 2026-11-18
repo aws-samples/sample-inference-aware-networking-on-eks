@@ -1,0 +1,116 @@
+# DRY-RUN-EXEMPT: reference shape, never applied. Helm owns the pools (DESIGN.md prime directive 4; the maintainer's ruling 2026-09-22).
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# WHY EXEMPT RATHER THAN APPLIED. Every InferencePool on the cluster is a Helm release of chart
+# inferencepool-v1.5.0 (one per tier; infra/addons/install-gateway-api-inference.sh deploy_epp).
+# Server-side dry-run of this file reported `configured` against those Helm-owned objects, i.e. the
+# gate was exercising a kubectl write path onto chart-owned state. A reference file that writes
+# against Helm-owned objects is a DRIFT SOURCE, not a check. Its job is to be diffed against chart
+# output; INV1 and INV3 still READ it.
+#
+# InferencePools, interactive, batch and premium. v1 GA API.
+# Verified against the generated v1 API reference. Note the three things
+# narrative docs get wrong: the field is endpointPickerRef (not extensionRef),
+# port is a nested object (not an integer), and selector takes matchLabels.
+# Two pools because Option A fleet isolation routes each tier to its own
+# backends and its own Endpoint Picker.
+# Confirm before applying:
+#   kubectl explain inferencepool.spec --api-version=inference.networking.k8s.io/v1
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata:
+  name: vllm-llama3-interactive
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: vllm-llama3
+      tier: interactive
+  targetPorts:
+    - number: 8000
+  appProtocol: http
+  endpointPickerRef:
+    name: vllm-llama3-interactive-epp
+    port:
+      number: 9002
+    failureMode: FailClose          # invariant 6: interactive is FailClose
+---
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata:
+  name: vllm-llama3-batch
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: vllm-llama3
+      tier: batch
+  targetPorts:
+    - number: 8000
+  appProtocol: http
+  endpointPickerRef:
+    name: vllm-llama3-batch-epp     # its OWN EPP
+    port:
+      number: 9002
+    # Design intent for batch is FailOpen (degraded beats absent), but Envoy AI Gateway
+    # v1.0.0 does NOT honor FailOpen for InferencePool: it never sets failure_mode_allow
+    # on the ext_proc filter it injects, and that filter is not reachable by
+    # EnvoyPatchPolicy (it is injected after Envoy Gateway translation). Verified by LT-7
+    # (batch traffic dropped on EPP outage) and the Envoy config_dump (failure_mode_allow
+    # absent). So batch is effectively FailClose on this stack; this value asserts the
+    # DELIVERED behavior. Revisit (restore FailOpen) if a newer AI Gateway version maps it.
+    failureMode: FailClose          # invariant 6: batch is FailClose on this stack (see note)
+---
+# PREMIUM POOL. Added 2026-09-21 (spec-002, the maintainer's ruling 1). Its OWN EPP, like the other two:
+# Option A fleet isolation routes each tier to its own backends and its own Endpoint Picker.
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata:
+  name: vllm-llama3-premium
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: vllm-llama3
+      tier: premium
+  targetPorts:
+    - number: 8000
+  appProtocol: http
+  endpointPickerRef:
+    name: vllm-llama3-premium-epp     # its OWN EPP
+    port:
+      number: 9002
+    # FailClose, and for premium the argument is stronger than for either incumbent. The whole
+    # point of the capability axis is that a hard request must not be served by a weaker path;
+    # routing blind on an EPP outage would place premium traffic without the live GPU state the
+    # tier exists to exploit. A hard 5xx is the honest answer. (Batch also reads FailClose here,
+    # but that asserts a DELIVERED behaviour Envoy AI Gateway v1.0.0 forces; this one is intent.)
+    failureMode: FailClose          # invariant 6
+---
+# ECONOMY POOL. Added 2026-09-23 (the maintainer's L4 branch ruling, 2a/2f). Reference shape: the chart
+# owns the live object (this file is DRY-RUN-EXEMPT), and `deploy_epp economy FailClose` creates it.
+#
+# ITS OWN POOL AND ITS OWN EPP even though the batch tier now runs on the same L4 family. Option A
+# is physical fleet isolation: separate pools, EPPs, Deployments and NodePools. Sharing any of them
+# would make the isolation claim untrue for one pair of tiers while every document still asserted it.
+apiVersion: inference.networking.k8s.io/v1
+kind: InferencePool
+metadata:
+  name: vllm-llama3-economy
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: vllm-llama3
+      tier: economy
+  targetPorts:
+    - number: 8000
+  appProtocol: http
+  endpointPickerRef:
+    name: vllm-llama3-economy-epp     # its OWN EPP
+    port:
+      number: 9002
+    # FailClose, as on every tier: Envoy AI Gateway v1.0.0 does not honour FailOpen for
+    # InferencePool (LT-7), so this asserts the DELIVERED behaviour rather than an intent.
+    failureMode: FailClose          # invariant 6

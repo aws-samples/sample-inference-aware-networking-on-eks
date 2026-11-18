@@ -1,0 +1,48 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# EC2NodeClass for EFA (disaggregated serving). Matches the AWS published
+# P6-B200 layout: 1 primary ENA plus EFA-only interfaces, enumerated per network
+# card, at most ONE EFA per network card. There is NO count field. Without an
+# explicit networkInterfaces layout, Karpenter makes ALL interfaces EFA, which
+# can exhaust subnet IPs.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: gpu-efa
+spec:
+  instanceProfile: KarpenterNodeInstanceProfile-inference-aware-eks   # stack-owned; see ec2nodeclass-gpu.yaml for why not `role`
+  amiFamily: AL2023
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags: { karpenter.sh/discovery: FILL_CLUSTER_NAME }
+  securityGroupSelectorTerms:
+    - tags: { karpenter.sh/discovery: FILL_CLUSTER_NAME }
+  networkInterfaces:
+    - networkCardIndex: 0
+      deviceIndex: 0
+      interfaceType: interface        # primary ENA. NOT "ena".
+    - networkCardIndex: 0
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 1
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 2
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 3
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 4
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 5
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 6
+      deviceIndex: 1
+      interfaceType: efa-only
+    - networkCardIndex: 7
+      deviceIndex: 1
+      interfaceType: efa-only

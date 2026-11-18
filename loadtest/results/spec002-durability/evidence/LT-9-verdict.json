@@ -1,0 +1,18 @@
+{
+  "K": 40,
+  "statuses": {
+    "complete": 40
+  },
+  "zero_loss": true,
+  "no_job_failed": true,
+  "dlq_at_outage_end": 1,
+  "dlq_now": 1,
+  "zero_dlq": false,
+  "claim_count_sum": 80,
+  "infra_rejections_sum": 40,
+  "real_gpu_runs": 40,
+  "exactly_once": true,
+  "outage_seconds": 900,
+  "time_to_drain_s": 917,
+  "horizon_note": "horizon crossed inside 900s: 1 messages reached the DLQ (recoverable by redrive)"
+}

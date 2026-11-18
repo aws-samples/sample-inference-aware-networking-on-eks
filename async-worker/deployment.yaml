@@ -1,0 +1,95 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Async worker Deployment. Runs under the async-worker SA (IRSA), scaled by KEDA
+# on SQS depth (manifests/04-autoscaling/keda-async-worker.yaml), NOT on vLLM metrics.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: async-worker
+  namespace: inference
+  # The worker invokes GPUs, so the cost safety net must be able to scale it to zero.
+  # See manifests/07-safety-net/safety-net.yaml and manifests/02-serving/vllm-interactive.yaml.
+  labels: { spike-safety-net: managed }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: async-worker }
+  template:
+    metadata:
+      labels: { app: async-worker }
+    spec:
+      serviceAccountName: async-worker
+      securityContext:
+        # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+      containers:
+        - name: worker
+          # v6: the worker submits each job to the inference-aware GATEWAY (Envoy plus the
+          # Endpoint Picker) carrying the batch tier header, so queued requests are routed by
+          # live GPU state on the identical path the synchronous traffic uses, not round-robined
+          # by a plain vLLM Service. It also carries a correlation-id header and persists the
+          # per-request trace. v5 added shared jobstore.py + payload persistence for the sweeper;
+          # v4 stopped deleting an orphaned job's message; v3 decoupled lease/retention TTLs +
+          # durable claim_count; v2 added the ownership guard. Same image serves worker.py,
+          # submit_api.py, sweeper.py. Rebuild+push before deploy.
+          image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-62d6b6e13814
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          resources:
+            requests: { cpu: "100m", memory: "256Mi" }
+            limits:   { cpu: "500m", memory: "512Mi" }
+          livenessProbe:
+            httpGet: { path: /metrics, port: 9100 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /metrics, port: 9100 }
+            periodSeconds: 10
+          env:
+            - { name: HOME, value: /tmp }   # writable home on a read-only root
+            # SQS_QUEUE_URL is DISCOVERED, not hardcoded. It was committed as
+            # ".../111122223333/inference", the SANITIZATION PLACEHOLDER ACCOUNT, so this worker
+            # could never have run against a real queue: it crash-looped on InvalidAddress. The
+            # account id is cluster-specific exactly like the gateway's Service hash, so it belongs
+            # in the ConfigMap setup-async-infra.sh publishes rather than in a committed literal.
+            # Found 2026-08-05 when phase3b's deliverable 1 needed a running worker.
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: async-endpoints
+                  key: sqs_queue_url
+            - { name: DDB_TABLE, value: inference-jobs }
+            # The inference-aware gateway (in-cluster Envoy Service for the inference-gateway
+            # Gateway). Queued jobs route through the Endpoint Picker exactly like sync traffic.
+            # Envoy Gateway names the Service per Gateway as envoy-<namespace>-<gateway>-<hash>, and
+            # the <hash> is cluster-specific, so it cannot be committed. setup-async-infra.sh (Stage 2)
+            # discovers it and publishes it as the gateway-endpoint ConfigMap:
+            #   kubectl get svc -n envoy-gateway-system \
+            #     -l gateway.envoyproxy.io/owning-gateway-name=inference-gateway -o name
+            # A missing ConfigMap keeps the worker from starting, so an unresolved endpoint fails loud.
+            - name: GATEWAY_ENDPOINT
+              valueFrom:
+                configMapKeyRef: { name: gateway-endpoint, key: url }
+            # SLA tier for queued work: the batch header the HTTPRoute matches to the batch pool.
+            - { name: INFERENCE_OBJECTIVE, value: "batch" }
+            # Timeout-chain ordering (ARCHITECTURE-REVIEW.md R.5): gateway route 600s < worker HTTP
+            # client 660s < claim lease 750s < SQS visibility 900s < sweeper grace 960s. The claim
+            # lease exceeds the route timeout so the claim is not stealable while the gateway is
+            # still trying; the HTTP client timeout exceeds the route timeout so the worker sees the
+            # gateway verdict, and is below the lease so the claim does not lapse mid-request.
+            - { name: CLAIM_TTL_SECONDS, value: "750" }
+            - { name: HTTP_TIMEOUT_SECONDS, value: "660" }
+            - { name: METRICS_PORT, value: "9100" }
+            - { name: AWS_REGION, value: "us-west-2" }          # boto3 region (Pod Identity supplies creds)
+            - { name: AWS_DEFAULT_REGION, value: "us-west-2" }  # botocore honors this one
+          ports:
+            - { name: metrics, containerPort: 9100 }

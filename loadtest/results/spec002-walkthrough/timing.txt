@@ -1,0 +1,63 @@
+WALKTHROUGH START 2026-09-26T07:13:38Z
+g6e.4xlarge	2026-09-26T05:04:39+00:00
+preflight_seconds=1
+service/inference-relay unchanged (server dry run)
+-- validated 34, skipped 1, exempt 3, failed 0
+dryrun_seconds=99
+stage1_seconds=83
+bash tests/smoke/test_routing_reachable.sh
+  in-cluster address detected; port-forwarding svc/envoy-inference-inference-gateway-2e466d4a -> 127.0.0.1:18080
+  gateway (reachable): http://127.0.0.1:18080
+OK routing reachable (200)
+routing_seconds=5
+stage2_seconds=87
+  File "/path/to/inference-aware-eks/tests/validation/test_idempotency.py", line 107, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/path/to/inference-aware-eks/tests/validation/test_idempotency.py", line 97, in main
+    assert status == "complete", f"job did not complete, status={status}"
+           ^^^^^^^^^^^^^^^^^^^^
+AssertionError: job did not complete, status=None
+make: *** [test-idempotency] Error 1
+idempotency_seconds=323
+bash tests/validation/run_idempotency.sh
+deployment "submit-api" successfully rolled out
+both submissions map to one job_id=idempotency-test#9f91f910c585e4141598f6dcf98eb3d4
+PASS: duplicate submission ran exactly one GPU job
+idempotency_retry_seconds=14
+stage3_seconds=75
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/path/to/inference-aware-eks/tests/validation/test_tier_isolation.py", line 353, in main
+    model = preflight()
+  File "/path/to/inference-aware-eks/tests/validation/test_tier_isolation.py", line 165, in preflight
+    raise AssertionError(
+    ...<4 lines>...
+    )
+AssertionError: FAIL: the network floor alone is 571 ms of the 500 ms target, so a p95 measured here describes client distance, not tier isolation. Run this from inside the cluster's region, or raise INTERACTIVE_TTFT_TARGET_MS deliberately.
+make: *** [test-tier-isolation] Error 1
+isolation_seconds=17
+  batch        request ok, TTFT 647 ms, cid=tier-iso-batch-7f2850dba3c7
+  interactive  -> pod=vllm-llama3-interactive-7f9765b5c5-v6pmv pod_tier=interactive node=ip-10-0-0-1.ec2.internal node_tier=interactive code=200
+  batch        -> pod=vllm-llama3-batch-7db9585976-gxhq5 pod_tier=batch node=ip-10-0-0-1.ec2.internal node_tier=batch code=200
+PASS gate A: each objective was served by its own tier (pod and node labels)
+== gate A premium: routing (both two-header premium pairs -> premium tier) ==
+SKIP gate A premium: vllm-llama3-premium has 0 ready replicas (one replica and no ScaledObject by design, so zero is its resting state; scale it to 1 to verify). Premium routing was NOT verified this run. THIS IS NOT A PASS.
+== gate A economy: routing (the batch+economy two-header pair -> economy tier) ==
+SKIP gate A economy: vllm-llama3-economy has 0 ready replicas (one replica and no ScaledObject by design, so zero is its resting state; scale it to 1 to verify). Economy routing was NOT verified this run. THIS IS NOT A PASS.
+== gate B: isolation (interactive TTFT under batch flood) ==
+  baseline interactive TTFT: 589 ms
+  requests: 10 interactive samples, 40 batch flood, 0 failed
+  interactive p95 TTFT under batch flood: 619 ms (target 3000)
+PASS gate B: interactive isolated from the batch flood
+PASS: tier isolation holds (routing and latency); premium: SKIPPED, NOT VERIFIED; economy: SKIPPED, NOT VERIFIED
+isolation_retry_seconds=40
+bash tests/smoke/run_keda_queries.sh
+OK   non-empty: sum(vllm:num_requests_waiting{tier="batch"})
+OK   non-empty: sum(vllm:num_requests_waiting{tier="interactive"})
+kubectl apply -f manifests/04-autoscaling/keda-batch.yaml   # enable batch scale-to-zero last
+scaledobject.keda.sh/vllm-llama3-batch unchanged
+scalers_seconds=15
+ALL INVARIANTS PASS
+invariants_seconds=5
+WALKTHROUGH END 2026-09-26T07:40:53Z

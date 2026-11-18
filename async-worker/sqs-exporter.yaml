@@ -1,0 +1,75 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Direct SQS depth exporter. Polls the inference queue and exposes sqs_queue_messages_visible
+# and sqs_queue_messages_in_flight (async-worker/sqs_exporter.py). Observability only: it calls
+# sqs:GetQueueAttributes and nothing else, and runs under the async-worker Service Account, whose
+# role already has GetQueueAttributes. This is the real queue-state source for the Request Flow
+# dashboard (the KEDA scaler metric is not scrapeable on this KEDA install; see ARCHITECTURE-REVIEW).
+# INVARIANT 8: namespace is inference.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqs-exporter
+  namespace: inference
+  labels: { app: sqs-exporter }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: sqs-exporter }
+  template:
+    metadata:
+      labels: { app: sqs-exporter }
+    spec:
+      serviceAccountName: async-worker   # Pod Identity role already has sqs:GetQueueAttributes
+      securityContext:
+        # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+      containers:
+        - name: sqs-exporter
+          image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-62d6b6e13814
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            httpGet: { path: /metrics, port: 9101 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /metrics, port: 9101 }
+            periodSeconds: 10
+          args: ["sqs_exporter.py"]
+          env:
+            - { name: HOME, value: /tmp }   # writable home on a read-only root
+            # SQS_QUEUE_URL is DISCOVERED, not hardcoded. THE CLASS, not a one-off: this was
+            # committed as ".../111122223333/inference", the SANITIZATION PLACEHOLDER ACCOUNT, so
+            # it could never have run against a real queue. phase3b found and fixed it on
+            # async-worker/deployment.yaml on 2026-08-05 and THE SIBLINGS WERE MISSED, because the
+            # fix was applied to the instance rather than to the class. The walkthrough run of
+            # 2026-08-08 hit it again here.
+            #
+            # THE ERROR IS MISLEADING, which is why it costs a debugging detour every time:
+            #   InvalidAddress: The address https://sqs.us-west-2.amazonaws.com/ is not valid
+            # botocore reports the HOST, not the URL with the wrong account, so "111122223333"
+            # appears nowhere in the message and the reader looks at IAM before the manifest.
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: async-endpoints
+                  key: sqs_queue_url
+            - { name: SQS_POLL_INTERVAL, value: "15" }   # exporter lag is one poll interval
+            - { name: METRICS_PORT, value: "9101" }
+            - { name: AWS_REGION, value: "us-west-2" }
+            - { name: AWS_DEFAULT_REGION, value: "us-west-2" }
+          ports:
+            - { name: metrics, containerPort: 9101 }
+          resources:
+            requests: { cpu: "25m", memory: "64Mi" }
+            limits:   { cpu: "100m", memory: "128Mi" }

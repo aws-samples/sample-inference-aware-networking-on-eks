@@ -1,0 +1,282 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# THE INTERACTIVE FRONT-DOOR RELAY. Phase 2 cutover, and it must land as ONE change set.
+#
+# Adding this file, deleting manifests/PHASE-PRE-RELAY.marker, and removing the load balancer
+# annotation from the gateway's envoyService are a single indivisible change. INV12 recognises
+# exactly two topologies, PRE-RELAY and POST-RELAY, and FAILS on anything else, so a half-finished
+# cutover is caught rather than left running. That is the point of the invariant: the intermediate
+# state, where both the gateway and the relay are externally reachable, is precisely the bypass the
+# cutover exists to close.
+#
+# WHY THE BYPASS MATTERS. While the gateway data plane is directly addressable, a client can reach
+# the interactive default rule UNCLASSIFIED, and in doing so evade classification, the reservation
+# guard and the upgrade-rate cap. Nothing fails and nothing alerts; the traffic simply arrives
+# already inside the pool the guards exist to protect.
+#
+# APPLY ORDER: manifests/03-routing/chain-b-timeouts.yaml first. The relay reads P and R from that
+# ConfigMap through non-optional references, so its pods do not start without it, and no stage
+# target applies either file (validated in this order on Amazon EKS 1.37, 2026-11-01).
+#
+# INVARIANT 8: namespace is `inference`.
+# INVARIANT 15: the image pin agrees with every other pin for this project's image. The relay runs
+#   the SAME image as the worker and the submit API, with a different command, so there is one pin
+#   to keep in agreement rather than two. A separate relay image would have added a second
+#   provenance chain for no benefit: the code already ships in async-worker/.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-relay
+  namespace: inference
+  labels:
+    app: inference-relay
+    app.kubernetes.io/part-of: inference-aware-eks
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inference-relay
+  template:
+    metadata:
+      labels:
+        app: inference-relay
+    spec:
+      # Its own service account and role (inference-relay: sqs:SendMessage only, for the promotion
+      # re-enqueue). Until 2026-10-31 the relay ran as async-worker and inherited the worker's queue
+      # and table permissions, none of which it uses.
+      serviceAccountName: inference-relay
+      securityContext:
+        # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: { type: RuntimeDefault }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+      containers:
+        - name: relay
+          image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-62d6b6e13814
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+          command: ["python", "relay_server.py"]
+          ports:
+            # ONE port, not two. `http` and `metrics` on the same containerPort is a duplicate
+            # definition that the API server warns about, and the second name buys nothing: the
+            # relay serves /metrics on the same listener.
+            - name: http
+              containerPort: 8080
+          env:
+            - { name: HOME, value: /tmp }   # writable home on a read-only root
+            # Chain B's R, READ FROM THE COMMITTED CONFIGMAP rather than restated here. The relay
+            # consumes the reviewed number instead of introducing its own, which is the whole reason
+            # chain-b-timeouts.yaml exists.
+            - name: RELAY_UPSTREAM_TIMEOUT_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: chain-b-timeouts
+                  key: RELAY_UPSTREAM_TIMEOUT_SECONDS
+            # The gateway's CLUSTER-INTERNAL address, DISCOVERED rather than committed. Envoy
+            # Gateway names the Service `envoy-<namespace>-<gateway>-<hash>` and the hash is
+            # cluster-specific, so setup-async-infra.sh resolves it once and publishes it. The relay
+            # reads the `base` key because it forwards the caller's own path; the worker reads `url`
+            # because it posts to a fixed one. A hardcoded name here was wrong on first contact with
+            # the cluster, which is exactly what a discovered value prevents.
+            - name: GATEWAY_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: gateway-endpoint
+                  key: base
+            # Section 7 guards. Per-instance budget: with 2 replicas the fleet ceiling is twice
+            # this, which is bounded deliberately and made visible by the exported counters rather
+            # than being left as an assumption. See guards property 8.
+            - name: UPGRADE_RATE_PER_SEC
+              value: "2.0"
+            - name: UPGRADE_BURST
+              value: "10"
+            # The withdrawal control. Flipping this to "1" and rolling the Deployment disables
+            # classification fleet-wide; every request is then served at its declared or defaulted
+            # tier, which is always a safe placement under upgrade-only semantics.
+            - name: CLASSIFIER_KILL_SWITCH
+              value: "0"
+            # P, the promotion deadline, READ FROM THE COMMITTED CONFIGMAP for the same reason R is:
+            # a hardcoded value would satisfy Chain B's ordering on paper while the actor enforced
+            # something else. INV11 asserts both the ordering and that this reference exists.
+            - name: PROMOTION_DEADLINE_SECONDS
+              valueFrom:
+                configMapKeyRef:
+                  name: chain-b-timeouts
+                  key: PROMOTION_DEADLINE_SECONDS
+            # Promotion re-places onto the async front door, so it stays OFF until that exists.
+            # Optional so the relay starts without it and simply does not promote, rather than
+            # crash-looping: not promoting costs a slot, and a relay that will not start costs
+            # everything.
+            - name: SQS_QUEUE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: async-endpoints
+                  key: sqs_queue_url
+                  optional: true
+          readinessProbe:
+            httpGet: { path: /healthz, port: 8080 }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          # LIVENESS IS A TCP PROBE, readiness stays HTTP (release candidate 7). The server caps its
+          # connections and answers one past the cap with 503 from its accept loop. An HTTP liveness
+          # probe would read that 503 as a dead process, so a host holding every connection could make
+          # the kubelet restart the pod and drop its in-flight work. The TCP connect still succeeds
+          # then, and still fails once the process stops accepting. Readiness failing under that
+          # load is correct: a saturated replica leaves rotation without being restarted.
+          livenessProbe:
+            tcpSocket: { port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+---
+# THE EXTERNAL EXPOSURE, RELOCATED HERE FROM THE GATEWAY'S envoyService. The annotation moves at an
+# UNCHANGED value: L = 690 was raised from 600 at the 2026-08-03 rebuild because it equalled the
+# route timeout and equal values race. The cutover relocates it; it does not re-decide it.
+#
+# Chain B, strict: P < 600 (route) < 630 (relay upstream) < 690 (this value). INV14 asserts that
+# ordering statically from this annotation and the ConfigMap the Deployment above reads.
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-relay
+  namespace: inference
+  labels:
+    app: inference-relay
+    # The marker INV12 keys on to tell THE relay's exposure apart from a stray external Service. The
+    # invariant needs to permit exactly one externally exposed Service and forbid every other, so it
+    # needs a way to recognise the permitted one that does not depend on matching a name by string.
+    inference-aware-eks/ingress-role: relay
+  annotations:
+    # ---------------------------------------------------------------------------------------
+    # NETWORK LOAD BALANCER VIA THE AWS LOAD BALANCER CONTROLLER, not a Classic Load Balancer.
+    #
+    # WHY THIS CHANGED, from the primary source rather than from preference. The Amazon EKS user
+    # guide, "Route TCP and UDP traffic with Network Load Balancers", read 2026-08-07:
+    #
+    #   "When you create a Kubernetes Service of type LoadBalancer, the AWS cloud provider load
+    #    balancer controller creates AWS Classic Load Balancers by default [...] This controller is
+    #    only receiving critical bug fixes in the future."
+    #   "We recommend that you use version 2.7.2 or later of the AWS Load Balancer Controller
+    #    instead [...] The AWS Load Balancer Controller creates AWS Network Load Balancers, but
+    #    doesn't create AWS Classic Load Balancers."
+    #
+    # So a bare `type: LoadBalancer` with no type annotation was silently selecting the legacy,
+    # maintenance-only path. It worked, which is exactly why nobody looked: a Classic Load Balancer
+    # serves traffic perfectly well and is simply not what a production deployment should be built
+    # on. `external` is the value that routes provisioning to the controller.
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    # IP targets rather than instance targets: with the Amazon VPC CNI the load balancer addresses
+    # pod IPs directly, which removes the second hop through a node port and, per the same guide,
+    # shares security-group rules for the same target port instead of adding one per load balancer.
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    # INTERNAL BY DEFAULT (changed 2026-10-31, Well-Architected security review). The relay is still
+    # the single deliberate entry point, but it is reachable only from inside the VPC: this listener
+    # carries plain HTTP and the relay terminates no TLS, so an internet-facing default would publish
+    # an unencrypted endpoint. Set explicitly rather than relied upon, because NLBs already default
+    # to `internal` and an invariant about exposure should not read a default to learn what is
+    # exposed. To serve callers outside the VPC, terminate TLS at the relay behind this TCP listener
+    # first, then change the scheme. A TLS listener on the NLB itself is not an option: its idle
+    # timeout is fixed at 350 s, below Chain B's L of 690.
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internal
+    #
+    # CHAIN B's L, PRESERVED ACROSS THE MIGRATION, and this is the constraint that decided whether
+    # the migration was even possible. INV14 asserts R 630 < L 690, where L is the external
+    # exposure's idle timeout. The Classic annotation
+    # `aws-load-balancer-connection-idle-timeout` does not apply to an NLB. The NLB equivalent is a
+    # LISTENER ATTRIBUTE, per the AWS Load Balancer Controller annotation reference (read
+    # 2026-08-07), which documents
+    # `service.beta.kubernetes.io/aws-load-balancer-listener-attributes.${Protocol}-${Port}` with
+    # `tcp.idle_timeout.seconds` as its example attribute.
+    #
+    # HAD THIS NOT EXISTED THE MIGRATION WOULD HAVE BEEN REFUSED RATHER THAN TAKEN, because an NLB
+    # whose idle timeout could not reach 690 would break the committed chain, and a best practice
+    # that silently breaks an invariant is not an improvement.
+    #
+    # OBSERVED 2026-08-07. This comment has held three values in one day and the sequence is the
+    # point: "VERIFIED ON THE PLATFORM" (overclaimed), then CONFIG-READ-BACK with the ENI question
+    # open (honest but incomplete), then OBSERVED once a 400-second connection actually survived.
+    # The word waited for the evidence.
+    #
+    # What was actually done: 690 was written to the listener and read back from it.
+    #
+    #   aws elbv2 describe-listener-attributes --listener-arn <listener>
+    #     { "Key": "tcp.idle_timeout.seconds", "Value": "690" }
+    #
+    # READ-BACK IS STRONGER THAN TRUSTING AN ANNOTATION AND WEAKER THAN OBSERVING BEHAVIOUR. It
+    # proves the load balancer accepted the value. It does not prove a connection actually survives
+    # 690 seconds, and there is a documented reason it might not.
+    #
+    # THE SECOND KNOB. ARCHITECTURE-REVIEW.md line 152 records the target ENI's connection-tracking
+    # default, `TcpEstablishedTimeout`, at 350 s on Nitro V6 and later, and lines 169 to 170 state
+    # that an NLB idle timeout ABOVE 350 requires the ENI side raised to match, or the ENI drops the
+    # tracking entry while the load balancer still believes the connection is live. ONLY THE
+    # LISTENER WAS SET. The effective cutoff may still be 350, which is BELOW the route timeout of
+    # 600, and that is the inverted ordering the 2026-08-03 scaled experiment proved yields
+    # flags=DC and code=0: no HTTP response at all, on the one path with no idempotency key.
+    #
+    # The listener protocol is TCP (confirmed 2026-08-07), so the TLS trap does not apply: a TLS
+    # listener's idle is fixed at 350 and unmodifiable, which would have settled this by
+    # construction.
+    #
+    # PRACTICAL STAKES, so the correction is not read as bigger than it is: the longest generation
+    # ever recorded in this project is 112 seconds, so no published number can have crossed 350.
+    # This corrects the RECORD'S CONFIDENCE, not the results.
+    #
+    # SETTLED 2026-08-07 BY OBSERVATION, not by reading config back. A stub holding 400 seconds
+    # (above the ENI default of 350, below the route timeout of 600) was driven through the full
+    # external path and returned:
+    #
+    #     code=200  time=400.610990
+    #
+    # OBSERVED: L exceeds 350 in practice on this path, so Chain B's ordering is not inverted.
+    #
+    # THE MECHANISM IS UNKNOWN and is recorded as unknown rather than guessed. The documented
+    # concern did not materialise; why is not established. Candidates, neither verified: the relay
+    # pods run on m6i.xlarge and the 350 default is documented for "Nitro V6 and later" (whether
+    # m6i is in that set is NOT verified here), or something else on the path keeps the entry alive.
+    #
+    # BOUNDED TO THE NODE TYPE THE RELAY CURRENTLY RUNS ON. If the relay is scheduled onto a
+    # different instance generation the question can reopen, and it would reopen SILENTLY, because
+    # the symptom is a bare reset that reads as a network fault.
+    #
+    # Evidence: evidence/eni-connection-tracking-400s-2026-08-07.txt
+    service.beta.kubernetes.io/aws-load-balancer-listener-attributes.TCP-80: tcp.idle_timeout.seconds=690
+spec:
+  type: LoadBalancer
+  # THE NETWORK CONTROL IS THE ACCESS BOUNDARY IN THIS SAMPLE. The relay does not authenticate
+  # callers, so this range and the internal scheme decide who can reach it. Put your organization's
+  # identity layer in front of the relay before any use, and keep this range narrow even then: a
+  # credential leaks by being copied, a CIDR fails by being widened, and neither covers the other.
+  #
+  # POSTURE SINCE 2026-10-31: THE CLUSTER VPC. The NLB is internal, so the only callers that can
+  # reach it are inside the VPC, and the range says so explicitly instead of leaving the field
+  # unset. Unset means OPEN to every address that can route to the listener, so an unset field
+  # would be the permissive choice dressed as the cautious one. 192.168.0.0/16 is the VPC CIDR
+  # that eksctl creates by default, and infra/cluster/eksctl-cluster.yaml sets no other. If you
+  # bring your own VPC, put its CIDR here, or narrower client ranges.
+  #
+  # The earlier posture, an operator's single egress /32 on an internet-facing NLB, is retired with
+  # the internet-facing scheme. Its failure mode still applies to any narrow range: a caller outside
+  # the range is dropped at the load balancer, the relay logs stay empty, and the symptom reads as
+  # a cluster or authentication fault. If the relay is unreachable and the pods are healthy, check
+  # this field first.
+  #
+  # STILL HONOURED UNDER THE NLB. `spec.loadBalancerSourceRanges` is supported by the AWS Load
+  # Balancer Controller (the annotation `load-balancer-source-ranges` is the alternative spelling).
+  loadBalancerSourceRanges:
+    - 192.168.0.0/16
+  selector:
+    app: inference-relay
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

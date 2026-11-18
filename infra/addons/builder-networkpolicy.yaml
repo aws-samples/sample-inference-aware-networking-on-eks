@@ -1,0 +1,50 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Egress bounds for the build pod.
+#
+# WHY. BuildKit executes whatever the Dockerfile tells it to, by design. That is not a defect, it is
+# the product, and it means the build pod is the one workload here whose behaviour is defined by an
+# input rather than by its image. A container in that position gets network bounds, and the bounds
+# cost less than the paragraph explaining why they were skipped.
+#
+# WHAT IT STILL NEEDS, and therefore what is allowed: DNS, and HTTPS to reach the Amazon ECR
+# endpoints it authenticates against and pushes to. The build context does NOT come over the
+# network (it is a ConfigMap produced by `git archive`), so there is deliberately no allowance for
+# fetching source. The Dockerfile's `pip install` reaches PyPI over the same HTTPS rule.
+#
+# HONEST LIMIT, stated rather than implied: Kubernetes NetworkPolicy cannot express "only the ECR
+# endpoints" by name, because names are resolved after the policy applies. This bounds the pod to
+# DNS plus HTTPS and denies everything else, including all cluster-internal traffic except DNS.
+# That removes lateral movement to in-cluster services, which is the reachable half of the risk.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: builder-egress
+  namespace: inference
+spec:
+  podSelector:
+    matchLabels:
+      job-name: build-async-worker
+  policyTypes: [Egress]
+  egress:
+    # DNS to the cluster resolver only.
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    # HTTPS to anything OUTSIDE the cluster: Amazon ECR for auth and push, and the package index
+    # the Dockerfile installs from. Cluster-internal CIDRs are excluded, so no in-cluster service
+    # is reachable and lateral movement is denied.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 192.168.0.0/16   # this cluster's VPC CIDR (eksctl default)
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+      ports:
+        - { protocol: TCP, port: 443 }

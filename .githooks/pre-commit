@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# THE SINGLE ENFORCEMENT POINT for the commit gates, as of 2026-08-07.
+#
+# IT WAS A BACKSTOP AND IT IS NOW THE GATE, and the change is a simplification with a reason. Until
+# today `make commit` ran test-offline and then this hook ran test-offline AGAIN, doubling every
+# commit's wall clock (several minutes each time) and creating a second place the gate could drift
+# from the first. THE HOOK IS THE BROADER GUARD: it also covers a direct `git commit`, which is
+# exactly how the 2026-08-05 slips happened, not by deciding to skip the gates but by not thinking
+# about them at all. A wrapper cannot catch what does not go through the wrapper.
+#
+# `make commit` now thins to what only it can do: FORCING THE MESSAGE FILE. It cannot check the
+# message form from here, because by the time a hook runs the message is already composed.
+#
+# COMMITTED UNDER .githooks/ AND INSTALLED BY `make hooks`, because .git/hooks is not version
+# controlled. A hook that lives only in one working copy protects only that copy, and this
+# project has a standing finding about mechanisms that exist in one place and are assumed
+# everywhere (the rebuild inventory).
+#
+#
+# Escape hatch: COMMIT_GATE_SKIP=1 git commit ... , which is deliberate, loud, and greppable in
+# shell history. A gate with no escape hatch gets disabled wholesale the first time it is wrong.
+set -uo pipefail
+[ "${COMMIT_GATE_SKIP:-0}" = "1" ] && { echo "pre-commit: SKIPPED via COMMIT_GATE_SKIP=1 (deliberate)"; exit 0; }
+cd "$(git rev-parse --show-toplevel)" || exit 1
+echo "pre-commit: running the gates before allowing the commit (single enforcement point)"
+fail=0
+make test-offline >/dev/null 2>&1 || { echo "pre-commit: FAIL test-offline"; fail=1; }
+
+# The invariant harness runs when the diff touches anything it asserts about. Moved here from the
+# wrapper with the rest of the enforcement, so the two cannot disagree about when it applies.
+if git diff --cached --name-only 2>/dev/null | grep -qE '^(manifests/|tests/|async-worker/|infra/)'; then
+  bash tests/verify_invariants.sh >/dev/null 2>&1 \
+    || { echo "pre-commit: FAIL verify-invariants"; fail=1; }
+fi
+
+if [ "$fail" -eq 0 ]; then
+  echo "pre-commit: OK"
+  exit 0
+fi
+echo "pre-commit: REFUSED, a gate is RED."
+echo "  Two commits landed on red gates on 2026-08-05, the second inside the commit naming the"
+echo "  first. Prefer 'make commit MSG=...', which also forces -F so a backtick cannot execute."
+echo "  Deliberate override: COMMIT_GATE_SKIP=1 git commit ..."
+exit 1

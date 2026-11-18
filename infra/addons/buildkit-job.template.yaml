@@ -1,0 +1,165 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# In-cluster image builder. Replaces the local Docker daemon entirely, which is what made the
+# async-worker image unbuildable in an earlier session and produced the v8-versus-v10 provenance
+# defect (BUILD-NOTES 2026-08-02).
+#
+# WHY BUILDKIT AND NOT KANIKO, decided on evidence 2026-08-03: GoogleContainerTools/kaniko is
+# ARCHIVED (last release v1.24.0, May 2025); moby/buildkit is active (v0.32.0, 2026-07-29).
+#
+# WHY THE IMAGE COMES FROM Amazon ECR AND NOT DOCKER HUB: mirrored into this account's own registry
+# and pinned BY DIGEST, so a rebuild has no public-registry reachability assumption at the moment
+# nothing else in the account exists.
+#
+# WHY THE CONTEXT IS A ConfigMap AND NOT AN IN-POD CLONE: the repository is private and the pod has
+# no credentials; injecting a token would add the long-lived credential Pod Identity exists to
+# avoid. The context is produced by `git archive <SHA>`, which reads the object database, so a
+# dirty tree is STRUCTURALLY EXCLUDED rather than asserted against. See infra/addons/run-build.sh.
+#
+# THIS IS A TEMPLATE, NOT AN APPLIABLE MANIFEST, which is why it lives in infra/addons/ beside the
+# script that renders it rather than in manifests/. It carries placeholders (__BUILDER_IMAGE__,
+# __SHA__, __TAG__, __REGISTRY__, __REGION__) that are substituted by run-build.sh. Keeping it in
+# manifests/ made make dry-run try to server-validate an unrendered template, and worse, to UPDATE
+# an existing completed Job whose spec.template is immutable. A file that cannot be applied does not
+# belong in the directory whose gate applies everything.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: builder
+  namespace: inference
+  # Pod Identity to role inference-builder: push and pull on this project's two ECR repositories
+  # only. Created by infra/addons/setup-builder.sh. No long-lived credentials.
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: build-async-worker
+  namespace: inference
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      serviceAccountName: builder
+      restartPolicy: Never
+      # Pod defaults. The buildkit container overrides seccomp with the documented rootless grant
+      # below; the two init containers run fully hardened, each for seconds before the build.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: { type: RuntimeDefault }
+      initContainers:
+        - name: unpack-context
+          image: busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662   # pinned in versions.yaml (builder_busybox_image)
+          command: ["/bin/sh","-c"]
+          args: ["set -eu; tar -xzf /cm/ctx.tar.gz -C /src; ls /src/async-worker/Dockerfile"]
+          volumeMounts:
+            - { name: cm, mountPath: /cm, readOnly: true }
+            - { name: src, mountPath: /src }
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits:   { cpu: 500m, memory: 256Mi }
+        - name: ecr-auth
+          image: amazon/aws-cli:2.39.3@sha256:d557b3524475d70dd3104cf44d96568ee3188897b73a6ece2b37aa50e1af362f   # pinned in versions.yaml (builder_awscli_image)
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -eu
+              PW=$(aws ecr get-login-password --region "$AWS_REGION")
+              AUTH=$(printf 'AWS:%s' "$PW" | base64 | tr -d '\n')
+              mkdir -p /dockerconfig
+              printf '{"auths":{"%s":{"auth":"%s"}}}' "$REGISTRY" "$AUTH" > /dockerconfig/config.json
+          env:
+            - { name: AWS_REGION, value: "__REGION__" }
+            - { name: REGISTRY, value: "__REGISTRY__" }
+            # Read-only root filesystem: the AWS CLI gets a writable HOME on an emptyDir.
+            - { name: HOME, value: /tmp }
+          volumeMounts:
+            - { name: dockerconfig, mountPath: /dockerconfig }
+            - { name: ecr-auth-tmp, mountPath: /tmp }
+          securityContext:
+            runAsUser: 10001
+            runAsGroup: 10001
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+            seccompProfile: { type: RuntimeDefault }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { cpu: 500m, memory: 512Mi }
+      containers:
+        - name: buildkit
+          image: __BUILDER_IMAGE__
+          # The revision label is read FROM THE ARCHIVE, not passed in beside it. async-worker/
+          # BUILD_REVISION carries $Format:%H$ and .gitattributes marks it export-subst, so
+          # `git archive <sha>` substitutes the real commit at archive time. Reading it here makes
+          # "archive of X stamped as Y" INEXPRESSIBLE rather than merely detected: the only SHA the
+          # builder can see is the one baked into the context it is building. The script's __SHA__
+          # is still cross-checked below, so a mismatch fails loudly instead of silently preferring
+          # one source.
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -eu
+              REV="$(cat /src/async-worker/BUILD_REVISION | tr -d '[:space:]')"
+              case "$REV" in
+                '$Format:'*) echo "ERROR: BUILD_REVISION was not expanded; the context did not come from git archive"; exit 1 ;;
+                "") echo "ERROR: BUILD_REVISION is empty"; exit 1 ;;
+              esac
+              if [ "$REV" != "__SHA__" ]; then
+                echo "ERROR: archive revision ${REV} does not match the requested __SHA__"; exit 1
+              fi
+              echo "building revision ${REV} (read from the archive)"
+              exec buildctl-daemonless.sh build                 --frontend=dockerfile.v0                 --local=context=/src/async-worker                 --local=dockerfile=/src/async-worker                 --opt=label:org.opencontainers.image.revision="${REV}"                 --opt=label:org.opencontainers.image.source=https://github.com/OWNER/inference-aware-eks                 --output=type=image,name=__REGISTRY__/inference-async-worker:__TAG__,push=true
+          env:
+            - { name: DOCKER_CONFIG, value: "/dockerconfig" }
+            - { name: BUILDKITD_FLAGS, value: "--oci-worker-no-process-sandbox" }
+          securityContext:
+            # EXACT GRANT, recorded precisely because "rootless with no privileged mode" was true as
+            # a COMPARISON and an understatement as a DESCRIPTION. What is actually granted:
+            #   runAsUser/Group 1000        non-root throughout, the property that matters on a
+            #                               cluster that also runs inference workloads
+            #   allowPrivilegeEscalation    REQUIRED: rootlesskit sets up the user namespace with
+            #                               newuidmap, a SETUID binary, which false blocks outright
+            #   seccompProfile Unconfined   REQUIRED: rootless BuildKit's syscall surface (clone,
+            #                               unshare, mount within the userns) exceeds the default
+            #   appArmorProfile Unconfined  REQUIRED for the same reason on AppArmor hosts
+            # Still strictly smaller than privileged: true, which is the alternative and which would
+            # grant host-level access. Bounded further by an egress NetworkPolicy
+            # (infra/addons/builder-networkpolicy.yaml) and a Pod Identity role scoped to ECR push
+            # on this project's two repositories.
+            # Rootless BuildKit, matching upstream's documented Kubernetes shape. Still NON-ROOT
+            # (uid/gid 1000), which is the property that matters on a cluster that also runs
+            # inference workloads.
+            #
+            # allowPrivilegeEscalation MUST be true, and this is not a relaxation for convenience:
+            # rootlesskit sets up the user namespace with `newuidmap`, which is a SETUID binary, and
+            # allowPrivilegeEscalation=false blocks setuid entirely. The first attempt set it false
+            # and buildkitd died with "failed to setup UID/GID map: newuidmap ... Could not set
+            # caps". Non-root plus setuid is a strictly smaller grant than privileged: true, which
+            # is the alternative and which would give the build pod host-level access.
+            runAsUser: 1000
+            runAsGroup: 1000
+            allowPrivilegeEscalation: true
+            seccompProfile: { type: Unconfined }
+            appArmorProfile: { type: Unconfined }
+          volumeMounts:
+            - { name: src, mountPath: /src }
+            - { name: dockerconfig, mountPath: /dockerconfig }
+            - { name: buildkitd, mountPath: /home/user/.local/share/buildkit }
+          resources:
+            requests: { cpu: "1", memory: 2Gi }
+            limits:   { cpu: "2", memory: 4Gi }
+      volumes:
+        - { name: cm, configMap: { name: build-context } }
+        - { name: src, emptyDir: {} }
+        - { name: dockerconfig, emptyDir: {} }
+        - { name: buildkitd, emptyDir: {} }
+        - { name: ecr-auth-tmp, emptyDir: {} }

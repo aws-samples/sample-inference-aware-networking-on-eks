@@ -1,0 +1,36 @@
+{
+  "cell": "B",
+  "arm": "epp",
+  "mode": "interleaved",
+  "salt": "dense-B-rho1.0-r2",
+  "P": 52,
+  "R_requested": 12,
+  "prefix_reps": 66,
+  "replicas": 4,
+  "n_start": 4,
+  "n_end": 4,
+  "requests_sent": 624,
+  "requests_ok": 624,
+  "prefix_cache_hits": 142944.0,
+  "prefix_cache_queries": 1175600.0,
+  "prefix_cache_hit_rate": 0.1216,
+  "requests_counted": 624.0,
+  "effective_R": 12.0,
+  "per_replica_share": {
+    "10.0.0.1:8000": 145.0,
+    "10.0.0.1:8000": 159.0,
+    "10.0.0.1:8000": 168.0,
+    "10.0.0.1:8000": 152.0
+  },
+  "per_replica_share_fraction": {
+    "10.0.0.1:8000": 0.232,
+    "10.0.0.1:8000": 0.255,
+    "10.0.0.1:8000": 0.269,
+    "10.0.0.1:8000": 0.244
+  },
+  "e2e_latency_p50_s": 6.458,
+  "e2e_latency_p90_s": 8.644,
+  "max_concentration_fraction": 0.269,
+  "integrity": "ok",
+  "integrity_problems": []
+}

@@ -1,0 +1,5 @@
+arm,reps,hit_rate,hit_spread,ttft_p50,ttft_p90,itl_p50,tok_s,coloc
+nvidia_epp_largeWS,2,0.9724,0.0001,0.4381,0.4632,0.0226,254.95,1.0
+nvidia_rr_largeWS,2,0.8925,0.0001,0.4391,0.5594,0.0225,252.35,0.389
+nvidia_epp_smallWS_control,2,0.9979,0.0,0.439,0.4569,0.0222,280.55,1.0
+nvidia_rr_smallWS_control,2,0.9977,0.0,0.4326,0.4523,0.0221,280.5,0.372

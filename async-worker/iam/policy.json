@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WorkerConsumesTheQueue",
+      "Effect": "Allow",
+      "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage"],
+      "Resource": "${QUEUE_ARN}"
+    },
+    {
+      "Sid": "WorkerAndExporterReadQueueDepth",
+      "Effect": "Allow",
+      "Action": ["sqs:GetQueueAttributes"],
+      "Resource": ["${QUEUE_ARN}", "${DLQ_ARN}"]
+    },
+    {
+      "Sid": "WorkerClaimsAndCompletesJobs",
+      "Effect": "Allow",
+      "Action": ["dynamodb:UpdateItem", "dynamodb:GetItem"],
+      "Resource": "${TABLE_ARN}"
+    }
+  ]
+}

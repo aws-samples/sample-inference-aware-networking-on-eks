@@ -1,0 +1,41 @@
+{
+  "_comment": "PRE-REGISTERED before the LT-8 run (2026-07-25). Do NOT edit after the run (standard 3). The interaction direction is NOT pre-committed (standard 4).",
+  "live_input": {
+    "num_gpu_blocks": 1921,
+    "block_size": 16,
+    "instance_type_pinned": "g6.12xlarge (4x NVIDIA L4 24GB, one node, all 4 replicas)",
+    "all_replicas_equal": true,
+    "gpu_memory_utilization": 0.9,
+    "max_model_len": 8192,
+    "enable_prefix_caching": true
+  },
+  "derived": {
+    "C_tokens_per_replica": 30736,
+    "N_replicas": 4,
+    "P_distinct_prefixes": 52,
+    "prefix_reps": 214,
+    "L_prefix_tokens": 5999,
+    "tokens_per_rep_measured": 28,
+    "R_requests_per_prefix": 12,
+    "JOBS_total": 624,
+    "per_replica_epp_interleaved_working_set_tokens": 77987,
+    "per_replica_over_C": 2.54,
+    "aggregate_working_set_tokens": 311948,
+    "aggregate_over_C": 10.15,
+    "worker_replicas_admitted_concurrency": 8,
+    "reps_per_cell": 2,
+    "cold_cache_method": "unique salted prefixes per cell (no restart), cell A also on freshly loaded replicas"
+  },
+  "predicted_hit_rate": {
+    "A_epp_grouped": 0.917,
+    "A_basis": "1 - P/JOBS = 1 - 52/624 (cold-miss floor; each prefix cold once)",
+    "B_epp_interleaved": "lower than A: per-replica (P/N)L = 2.54x C OVERFLOWS, so eviction pulls B below the 0.917 cold-start line; magnitude uncertain (eviction is not in the closed-form), expect ~0.6 to 0.85",
+    "C_rr_grouped": 0.667,
+    "C_basis": "1 - (P*N)/JOBS = 1 - 208/624 (each prefix warmed on all 4 replicas)",
+    "D_rr_interleaved": "collapses (thrash): P*L = 10x C on every replica; expect well below C, ~0.1 to 0.4"
+  },
+  "interaction": {
+    "note": "Report the sign of (A-B) vs (C-D) as measured. Do NOT pre-commit a direction. Model reasoning leans toward substitutes ((C-D) > (A-B)) because RR-interleaved (D) has the most to gain from grouping, but B's eviction could enlarge (A-B); genuinely unknown.",
+    "anchor": "Cell A should attain the cold-miss floor ~0.917 (P cold events). Confirm cell B did NOT tie A (it should evict), so A is the unique floor here."
+  }
+}

@@ -1,0 +1,86 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Orphan sweeper (DESIGN.md section 3.4). A reconciler that re-drives async jobs stuck
+# in `processing` with no live worker and no SQS message left to redeliver them (the
+# LT-6 durability gap). It runs on a schedule, finds abandoned jobs, and re-enqueues a
+# message so a worker re-claims via the stale-claim steal path. It never touches a
+# healthy job (complete, or processing with a live lease), and its grace period exceeds
+# the queue visibility timeout so it never races SQS's own redelivery.
+#
+# INVARIANT 8: namespace is `inference`. Auth is EKS Pod Identity: the `sweeper` SA is
+# associated (infra/addons/setup-sweeper.sh) to the least-privilege role inference-sweeper
+# (DynamoDB Scan+UpdateItem, SQS SendMessage+GetQueueAttributes; nothing else).
+#
+# GPU-free: this is part of the steady-state base and keeps running after the GPU fleet
+# is torn down. It costs effectively nothing (a sub-second scan once a minute).
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: orphan-sweeper
+  namespace: inference
+  labels: { app: orphan-sweeper }
+spec:
+  schedule: "*/1 * * * *"          # every minute
+  concurrencyPolicy: Forbid        # never overlap runs
+  startingDeadlineSeconds: 30
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 120    # a sweep is a short scan; bound it hard
+      template:
+        metadata:
+          labels: { app: orphan-sweeper }
+        spec:
+          serviceAccountName: sweeper
+          restartPolicy: Never
+          securityContext:
+            # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          volumes:
+            - { name: tmp, emptyDir: {} }
+          containers:
+            - name: sweeper
+              # Same image as the worker; the CronJob overrides the entrypoint arg to
+              # sweeper.py. Bump this tag in lockstep with the worker Deployment.
+              image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-62d6b6e13814
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+              args: ["sweeper.py"]
+              env:
+                - { name: HOME, value: /tmp }   # writable home on a read-only root
+                # SQS_QUEUE_URL is DISCOVERED, not hardcoded. THE CLASS, not a one-off: this was
+                # committed as ".../111122223333/inference", the SANITIZATION PLACEHOLDER ACCOUNT, so
+                # it could never have run against a real queue. phase3b found and fixed it on
+                # async-worker/deployment.yaml on 2026-08-05 and THE SIBLINGS WERE MISSED, because the
+                # fix was applied to the instance rather than to the class. The walkthrough run of
+                # 2026-08-08 hit it again here.
+                #
+                # THE ERROR IS MISLEADING, which is why it costs a debugging detour every time:
+                #   InvalidAddress: The address https://sqs.us-west-2.amazonaws.com/ is not valid
+                # botocore reports the HOST, not the URL with the wrong account, so "111122223333"
+                # appears nowhere in the message and the reader looks at IAM before the manifest.
+                - name: SQS_QUEUE_URL
+                  valueFrom:
+                    configMapKeyRef:
+                      name: async-endpoints
+                      key: sqs_queue_url
+                - { name: DDB_TABLE, value: inference-jobs }
+                - { name: AWS_REGION, value: "us-west-2" }
+                - { name: AWS_DEFAULT_REGION, value: "us-west-2" }
+                # Grace is DERIVED from the queue's VisibilityTimeout + margin when
+                # SWEEP_GRACE_SECONDS is unset, so it always exceeds visibility (the
+                # correctness model). Set SWEEP_GRACE_SECONDS only to pin it for a test.
+                - { name: SWEEP_MARGIN_SECONDS, value: "60" }
+                - { name: SWEEP_COOLDOWN_SECONDS, value: "300" }
+              resources:
+                requests: { cpu: "50m", memory: "128Mi" }
+                limits:   { cpu: "250m", memory: "256Mi" }

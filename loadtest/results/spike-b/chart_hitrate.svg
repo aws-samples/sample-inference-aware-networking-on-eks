@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300" font-family="sans-serif">
+<text x="260.0" y="24" text-anchor="middle" font-size="16" font-weight="bold">Neuron prefix-cache hit rate (PC-on)</text>
+<line x1="54" y1="250" x2="500" y2="250" stroke="#888"/>
+<rect x="54" y="61.587999999999994" width="90" height="188.412" fill="#2a7"/>
+<text x="99.0" y="55.587999999999994" text-anchor="middle" font-size="13" font-weight="bold">0.8972</text>
+<text x="99.0" y="268" text-anchor="middle" font-size="12">EPP</text>
+<rect x="184" y="80.173" width="90" height="169.827" fill="#c73"/>
+<text x="229.0" y="74.173" text-anchor="middle" font-size="13" font-weight="bold">0.8087</text>
+<text x="229.0" y="268" text-anchor="middle" font-size="12">RR</text>
+<rect x="314" y="246" width="90" height="4" fill="#ccc"/>
+<text x="359.0" y="240" text-anchor="middle" font-size="12" fill="#999">n/a</text>
+<text x="359.0" y="268" text-anchor="middle" font-size="12">PC-off EPP</text>
+</svg>

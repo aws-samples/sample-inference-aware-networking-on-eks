@@ -1,0 +1,27 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# EC2NodeClass for Neuron (inf2/trn2). Uses the EKS-optimized AL2023 NEURON AMI,
+# which ships the Neuron drivers/runtime. The GPU NodeClass (NVIDIA AL2023) does
+# NOT have them, so Neuron needs its own NodeClass. AMI selected by name pattern
+# (amazon-eks-node-al2023-x86_64-neuron-<k8s>-*) owned by amazon; amiFamily AL2023
+# supplies the bootstrap. Section 8.3: Neuron is the least portable part of the stack.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: neuron
+spec:
+  instanceProfile: KarpenterNodeInstanceProfile-inference-aware-eks   # stack-owned; see ec2nodeclass-gpu.yaml for why not `role`
+  amiFamily: AL2023
+  amiSelectorTerms:
+    - name: amazon-eks-node-al2023-x86_64-neuron-1.37-*
+      owner: "amazon"
+  subnetSelectorTerms:
+    - tags: { karpenter.sh/discovery: inference-aware-eks }
+  securityGroupSelectorTerms:
+    - tags: { karpenter.sh/discovery: inference-aware-eks }
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 500Gi        # Neuron compile artifacts + weights can be large
+        volumeType: gp3
+        deleteOnTermination: true

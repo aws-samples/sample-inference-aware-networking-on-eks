@@ -1,0 +1,52 @@
+# DRY-RUN-EXEMPT: reference shape, never applied (DESIGN.md prime directive 4).
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# The exemption is DECLARED IN THE FILE rather than listed in the Makefile, so the file that must
+# not be applied is the thing that says so, and moving or renaming it cannot silently re-enrol it.
+#
+# WHY IT BECAME NECESSARY on 2026-08-04: once the chart deployed the real EPP, a server-side dry-run
+# of this file failed with `spec.selector: field is immutable`, because the chart's selector differs
+# from this illustration. That failure is CORRECT and is exactly what prime directive 4 predicts;
+# what was wrong was dry-running a file the directive says is a diff target, not a deployable.
+#
+# Endpoint Picker (EPP) REFERENCE SHAPE ONLY.
+# The supported path is the llm-d / Gateway API Inference Extension Helm chart,
+# which generates the EPP with correct flags and RBAC for its version. The flags
+# below are illustrative and CHANGE BETWEEN VERSIONS. Use this file only to diff
+# against the chart output. Run at least two replicas with a PodDisruptionBudget.
+# One EPP per pool: vllm-llama3-interactive-epp (interactive), vllm-llama3-batch-epp (batch).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama3-interactive-epp
+  namespace: inference
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: vllm-llama3-interactive-epp }
+  template:
+    metadata:
+      labels: { app: vllm-llama3-interactive-epp }
+    spec:
+      serviceAccountName: epp
+      containers:
+        - name: epp
+          image: FILL_EPP_IMAGE      # pin in versions.yaml; chart supplies this
+          args:
+            - --pool-name=vllm-llama3-interactive   # illustrative flag
+            - --pool-namespace=inference
+          ports:
+            - containerPort: 9002
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: vllm-llama3-interactive-epp-pdb
+  namespace: inference
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: vllm-llama3-interactive-epp }
+# Repeat both objects for batch with app: vllm-llama3-batch-epp and
+# --pool-name=vllm-llama3-batch.

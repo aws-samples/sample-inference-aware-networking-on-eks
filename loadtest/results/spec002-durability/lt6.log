@@ -1,0 +1,65 @@
+>> shorten SQS visibility to 60s and worker CLAIM_TTL (lease) to 25s
+>> submit N=300 distinct jobs (medium gen), then kill half the workers mid-flight
+submitted ok=300 of 300 (300 distinct x 1)
+>> FAULT: kill 50% of worker pods
+killing 3 of 6 worker pods
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "async-worker-5986fb8c94-89bc7" force deleted
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "async-worker-5986fb8c94-8x9kb" force deleted
+Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "async-worker-5986fb8c94-kgk4m" force deleted
+>> wait for all 300 to complete on the sweeper's own schedule (cap 20 min; breaks on 300)
+[1] complete=83/300
+[2] complete=107/300
+[3] complete=132/300
+[4] complete=157/300
+[5] complete=186/300
+[6] complete=210/300
+[7] complete=235/300
+[8] complete=260/300
+[9] complete=289/300
+[10] complete=294/300
+[11] complete=294/300
+[12] complete=294/300
+[13] complete=294/300
+[14] complete=294/300
+[15] complete=294/300
+[16] complete=294/300
+[17] complete=294/300
+[18] complete=294/300
+[19] complete=294/300
+[20] complete=294/300
+[21] complete=294/300
+[22] complete=294/300
+[23] complete=294/300
+[24] complete=294/300
+[25] complete=294/300
+[26] complete=294/300
+[27] complete=294/300
+[28] complete=294/300
+[29] complete=294/300
+[30] complete=294/300
+[31] complete=294/300
+[32] complete=294/300
+[33] complete=294/300
+[34] complete=294/300
+[35] complete=294/300
+[36] complete=294/300
+[37] complete=294/300
+[38] complete=294/300
+[39] complete=294/300
+[40] complete=294/300
+[41] complete=294/300
+[42] complete=294/300
+[43] complete=300/300
+=== LT-6 verdict (analyze.py lt6d, durable DynamoDB claim_count) ===
+LT-6 durability (run=lt6-1790345865, N=300, D=1)
+  distinct complete            : 300   (expect exactly 300)
+  total GPU runs (sum claim_count): 309
+  extra runs beyond N          : 9   (re-claims of interrupted jobs)
+  jobs run more than once      : 9   (bound: <= 80 interrupted)
+  recovered by sweeper (3.4)   : 6   (message-less orphans, requeued_at set)
+  recovered by SQS redelivery  : 3   (interrupted, message still live)
+  zero lost: PASS   extra runs bounded: PASS   reruns bounded: PASS   => PASS
+RUN_TAG=lt6-1790345865 START=1790345884 END=1790346668

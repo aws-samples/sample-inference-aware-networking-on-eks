@@ -1,0 +1,58 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# InferenceObjective, llm-d.ai/v1 (moved from inference.networking.x-k8s.io/v1alpha2 when the Gateway API
+# Inference Extension v1.6.0 handed the EPP to llm-d; v1 lists pools in poolRefs). Houses Priority today;
+# will gain SLO fields later. Priority is an integer, not an enum.
+# INVARIANT 2: each objective points at its OWN pool. Both pointing at one
+# pool collapses isolation silently.
+apiVersion: llm-d.ai/v1
+kind: InferenceObjective
+metadata:
+  name: interactive
+  namespace: inference
+spec:
+  priority: 0
+  poolRefs:
+    - group: inference.networking.k8s.io
+      name: vllm-llama3-interactive
+---
+apiVersion: llm-d.ai/v1
+kind: InferenceObjective
+metadata:
+  name: batch
+  namespace: inference
+spec:
+  priority: 2
+  poolRefs:
+    - group: inference.networking.k8s.io
+      name: vllm-llama3-batch
+---
+# PREMIUM OBJECTIVE. INVARIANT 2: its own pool, never a shared one.
+# Priority 1 sits between interactive (0) and batch (2). Premium is latency-relevant, because it is
+# admitted on the interactive lane, but it is not the latency-critical tier: a caller who pins
+# premium has asked for the strongest model and has accepted that it is slower, which is the
+# opposite of what an interactive+standard caller asked for.
+apiVersion: llm-d.ai/v1
+kind: InferenceObjective
+metadata:
+  name: premium
+  namespace: inference
+spec:
+  priority: 1
+  poolRefs:
+    - group: inference.networking.k8s.io
+      name: vllm-llama3-premium
+---
+# ECONOMY OBJECTIVE. Added 2026-09-23 (the maintainer's L4 branch ruling). INVARIANT 2: its poolRef names
+# the economy pool and no other. Priority 3: below batch (2), because economy is the cheapest class
+# and the first to yield when the Endpoint Picker is choosing under contention.
+apiVersion: llm-d.ai/v1
+kind: InferenceObjective
+metadata:
+  name: economy
+  namespace: inference
+spec:
+  priority: 3
+  poolRefs:
+    - group: inference.networking.k8s.io
+      name: vllm-llama3-economy

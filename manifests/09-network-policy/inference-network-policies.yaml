@@ -1,0 +1,83 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# OPTIONAL INGRESS ISOLATION for the inference namespace. Applied by `make network-policies`, never by
+# a stage target, because a NetworkPolicy only takes effect when the Amazon VPC CNI add-on enforces
+# network policies, and a policy that is not enforced reads as protection while providing none. The
+# apply script refuses to run until enforcement is on.
+#
+# THE SHAPE. Deny all ingress, then allow exactly the callers this design has:
+#   - pods in this namespace (relay, worker, submit API, Endpoint Pickers, producers, load driver),
+#   - the Envoy Gateway data plane in envoy-gateway-system (it calls the Endpoint Pickers and the
+#     vLLM pods),
+#   - Prometheus in monitoring (it scrapes every metrics port),
+#   - the VPC CIDR to the relay only, which covers the internal Network Load Balancer and its
+#     health checks.
+# Kubelet probes are unaffected: traffic from a pod's own node is always allowed.
+#
+# NOT VALIDATED ON A CLUSTER YET (2026-10-31). Producers in other namespaces are refused by design;
+# label and allow them explicitly if you run any.
+#
+# INVARIANT 8: namespace is `inference`.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-gateway-data-plane
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: envoy-gateway-system }
+          podSelector:
+            matchLabels: { gateway.envoyproxy.io/owning-gateway-name: inference-gateway }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-monitoring-scrape
+  namespace: inference
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-vpc-to-relay
+  namespace: inference
+spec:
+  podSelector:
+    matchLabels: { app: inference-relay }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - ipBlock: { cidr: 192.168.0.0/16 }   # the VPC CIDR, the same range as the relay Service
+      ports:
+        - { protocol: TCP, port: 8080 }

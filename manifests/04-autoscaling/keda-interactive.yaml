@@ -1,0 +1,48 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# KEDA ScaledObject, interactive tier.
+# INVARIANT 4: scaleTargetRef names a Deployment (apps/v1), NOT the InferencePool.
+# InferencePool has no /scale subresource, so pointing at the pool name fails or
+# sits inert.
+# TRAP: a misspelled metric name returns an empty vector, and 'or vector(0)' turns
+# that into a legitimate-looking zero, so the scaler silently never fires. Run
+# make test-keda-queries after any metric-name change.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: vllm-llama3-interactive
+  namespace: inference
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1        # required: the workload, not the pool
+    kind: Deployment
+    name: vllm-llama3-interactive
+  # READER SIZE: 1. Reduced from 4 on 2026-08-08, AFTER the walkthrough run proved the
+  # Deployment-only reduction was incomplete.
+  #
+  # KEDA OWNS THE REPLICA COUNT once a ScaledObject exists. The serving Deployments were reduced to
+  # replicas: 1 for reader size, and this floor silently overrode them: `make observability-scalers`
+  # is the LAST step of the walkthrough, and applying it scaled both tiers back to 4, which made
+  # Karpenter provision a fleet. Peak concurrency went to ELEVEN instances against a projection of
+  # two, including two g6.12xlarge nobody asked for.
+  #
+  # THE SHAPE, for the third time in one batch: a class fix applied to one member. Reader size was
+  # applied to the Deployments and not to the autoscalers that override them.
+  #
+  # The publication load-test suite needs 4 here. Raise it deliberately for those runs, the same way
+  # the Deployment replicas are raised.
+  minReplicaCount: 1
+  maxReplicaCount: 2           # reader size; the load-test suite raises this with minReplicaCount
+  cooldownPeriod: 120
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:   { stabilizationWindowSeconds: 0 }    # fast scale-out
+        scaleDown: { stabilizationWindowSeconds: 300 }  # slow scale-in
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring:9090
+        # queue depth from the vLLM metrics endpoint, interactive tier only
+        query: sum(vllm:num_requests_waiting{tier="interactive"})
+        threshold: "5"

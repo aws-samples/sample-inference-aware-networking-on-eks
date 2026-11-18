@@ -1,0 +1,81 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# CHAIN B, the interactive (synchronous) timeout chain, as COMMITTED CONFIGURATION.
+#
+# WHY THIS FILE EXISTS. Until now one of the two Chain B constants was a load balancer annotation
+# (L = 690, real configuration that something reads) and the other was a NUMBER IN A COMMENT
+# (R = 630, read by nobody). A constant that lives in prose cannot be asserted, cannot be consumed,
+# and drifts from whatever the relay eventually hardcodes with nothing noticing. Chain A does not
+# have this problem: its four values are environment variables on the worker Deployment, which is
+# exactly why INV10 can check its ordering today.
+#
+# So both Chain B values live here, in one place, and the Phase 2 relay CONSUMES them from here
+# rather than restating them. INV14 then asserts the ordering statically from the committed files,
+# with no cluster and no running relay, in the same way INV10 already does for Chain A.
+#
+# THE CHAIN, strict inequality at every step (design v6.2.2 observation 0b A20, v6.2.3 0b A21):
+#
+#     P  <  600  <  630  <  690
+#     |     |       |       |
+#     |     |       |       +-- L, load balancer idle timeout. Outermost, so the LB is never the
+#     |     |       |           first to give up. Lives on the exposure annotation, and MOVES onto
+#     |     |       |           the relay exposure in the same change set that adds the relay.
+#     |     |       +---------- R, relay upstream timeout. The relay must outlast the route it
+#     |     |                   calls through, or it abandons a request the gateway is still
+#     |     |                   servicing and the caller sees a failure that never happened.
+#     |     +------------------ route timeout, Gateway API HTTPRoute. Already committed.
+#     +------------------------ P, the client-facing promotion deadline. Must be the SHORTEST: it
+#                               is a promise made to the caller, and a promise that outlives the
+#                               machinery enforcing it is not enforceable.
+#
+# WHY 30 SECONDS OF MARGIN AT EACH STEP AND NOT 1. The gap absorbs the difference between when a
+# timer fires and when the connection actually closes: TLS teardown, the load balancer's own
+# bookkeeping, and a relay that is mid-write when its deadline arrives. One second of margin is
+# arithmetically ordered and operationally a race, which is precisely the R.5 defect this project
+# already paid for once on Chain A (equal values raced, and a redelivered worker could double-run a
+# job the first was still writing).
+#
+# CHAINS A AND B DO NOT COMPARE. There is deliberately no inequality between them: they govern
+# different request paths, and inventing a cross-chain relation would constrain both for no reason.
+# INV10 owns Chain A, INV14 owns Chain B, and neither reaches across.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chain-b-timeouts
+  namespace: inference
+  labels:
+    app.kubernetes.io/part-of: inference-aware-eks
+    inference-aware-eks/chain: "B"
+data:
+  # Route timeout, seconds. Restated here so the whole chain is readable in one place; the value
+  # that the data plane actually applies is the HTTPRoute's, and INV14 asserts the two agree rather
+  # than trusting this copy. A restatement that nothing cross-checks is how two sources of truth
+  # start.
+  ROUTE_TIMEOUT_SECONDS: "600"
+
+  # R, the relay's timeout on its upstream call to the gateway. Consumed by the Phase 2 relay
+  # Deployment as an environment variable sourced from this key. Not yet consumed by anything,
+  # because the relay does not exist; committed now so the relay reads a reviewed number instead of
+  # introducing its own.
+  RELAY_UPSTREAM_TIMEOUT_SECONDS: "630"
+
+  # L, the external load balancer idle timeout. The AUTHORITATIVE COPY IS THE ANNOTATION, currently
+  # on the gateway exposure and moving to the relay exposure at the cutover. Restated for the same
+  # reason as the route timeout, and cross-checked for the same reason.
+  EXPOSURE_IDLE_TIMEOUT_SECONDS: "690"
+
+  # P, the promotion deadline. SET 2026-08-04, and it is no longer a product decision left open:
+  # amendment 0b A10 made it a COST CALCULATION by naming the routing tax, and the calculation is
+  # shown in full in docs/specs/PRICING-promotion-deadline-P.md.
+  #
+  #   break-even ceiling : P < (600 - 0.86 - 0.094) / 2 = 299.5 s
+  #                        above it a promotion costs more accelerator work than the occupancy it
+  #                        frees, so the mechanism becomes a net loss exactly when it fires
+  #   chosen             : 120 s, 2.5x under the ceiling, ~120x above the measured healthy p90
+  #   Chain B            : 120 < 600 < 630 < 690, asserted by INV11
+  #
+  # ROUND ON PURPOSE. A value like 287 would imply a precision the inputs do not support: the
+  # ceiling rests on a single-datum kappa, a CONCURRENCY-1 slot-release measurement, and a
+  # regeneration time that is bounded rather than measured.
+  PROMOTION_DEADLINE_SECONDS: "120"
+  PROMOTION_DEADLINE_CEILING_SECONDS: "600"

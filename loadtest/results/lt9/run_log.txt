@@ -1,0 +1,16 @@
+=== [1/4] submit 40 jobs ===
+batch jobs submitted ok=40 of 40 (4 prefix-groups, tag=lt9-1785001073)
+=== [2/4] batch inference-path outage for 900s (scale batch EPP to 0) ===
+deployment.apps/vllm-llama3-batch-epp scaled
+   DLQ depth at end of 900s outage: 0 (expect 0 post-B.1; >0 means the horizon was crossed)
+=== [3/4] restore the EPP, drain to completion ===
+deployment.apps/vllm-llama3-batch-epp scaled
+deployment "vllm-llama3-batch-epp" successfully rolled out
+drained 40/40
+=== [4/4] verdict (envelope + exactly-once gates) ===
+sed: 1: "s/^/   sweeper orphan/e ...": bad flag in substitute command: 'e'
+LT9_VERDICT {"K": 40, "statuses": {"complete": 40}, "zero_loss": true, "no_job_failed": true, "dlq_at_outage_end": 0, "dlq_now": 0, "zero_dlq": true, "claim_count_sum": 84, "infra_rejections_sum": 44, "real_gpu_runs": 40, "exactly_once": true, "outage_seconds": 900, "time_to_drain_s": 922, "horizon_note": "no DLQ within the outage: horizon > 900s"}
+LT-9: PASS (zero loss, zero DLQ, exactly-once, no job failed)
+>> queue-depth series: loadtest/results/lt9/queue_depth.csv ; verdict: loadtest/results/lt9/LT-9-verdict.json ; fill LT-9-REPORT.md
+loadtest/run_lt9.sh: line 133: 64471 Terminated: 15          kubectl -n $NS port-forward svc/submit-api 8080:8080 > /dev/null 2>&1
+loadtest/run_lt9.sh: line 133: 64472 Terminated: 15          sampler

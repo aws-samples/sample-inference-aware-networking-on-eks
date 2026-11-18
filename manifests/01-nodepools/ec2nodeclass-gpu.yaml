@@ -1,0 +1,28 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# EC2NodeClass for general GPU nodes (no EFA). Referenced by the interactive and
+# batch NodePools. Model weights plus caches can exceed 500Gi for large models;
+# size the volume to the model you serve.
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: gpu
+spec:
+  # instanceProfile, NOT role: with `role` Karpenter MINTS an instance profile per
+  # EC2NodeClass, outside the CloudFormation stack, and those unowned objects blocked the
+  # 2026-08-03 teardown. The profile is created by the stack overlay and referenced here, so
+  # Karpenter creates no IAM objects. Mutually exclusive with `role` (CEL-enforced at v1.14.0 and v1.15.1).
+  instanceProfile: KarpenterNodeInstanceProfile-inference-aware-eks
+  amiFamily: AL2023                  # accelerated AMI for NVIDIA
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags: { karpenter.sh/discovery: inference-aware-eks }
+  securityGroupSelectorTerms:
+    - tags: { karpenter.sh/discovery: inference-aware-eks }
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        volumeSize: 500Gi
+        volumeType: gp3
+        deleteOnTermination: true

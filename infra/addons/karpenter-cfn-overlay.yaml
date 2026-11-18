@@ -1,0 +1,64 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Overlay appended to AWS's Karpenter getting-started CloudFormation template.
+#
+# WHY THIS EXISTS. The 2026-08-03 teardown needed FOUR attempts on the Karpenter stack, and both
+# failures were structural rather than transient (BUILD-NOTES 2026-08-03):
+#
+#   1. The stack owns six managed policies, but install-karpenter.sh created the CONTROLLER ROLE
+#      outside the stack, so CloudFormation could not delete policies whose attachment it did not
+#      own. "Cannot delete a policy attached to entities."
+#   2. Karpenter mints an INSTANCE PROFILE per EC2NodeClass, outside the stack, so the stack's node
+#      role was held by objects it did not know about. "Cannot delete entity, must remove roles
+#      from instance profile first."
+#
+# Documenting a two-step teardown would decay and the next teardown would pay the four-attempt
+# cost again. This makes the stack own both objects, so ONE stack delete is sufficient. That is
+# the acceptance criterion, and it is testable at the next teardown.
+#
+# The two resources below are appended to the AWS template's Resources section by
+# install-karpenter.sh, so AWS's template stays pristine and upgradeable: we never fork it, we
+# overlay it, and the overlay is small enough to re-verify against a new upstream version.
+#
+# VERIFIED at Karpenter v1.14.0 before adopting, and RE-VERIFIED at v1.15.1 on 2026-10-31, per DESIGN.md directive 1:
+#   - EC2NodeClass spec.instanceProfile EXISTS and is "mutually exclusive from role", with the CEL
+#     rule "must specify exactly one of ['role', 'instanceProfile']"
+#     (karpenter.k8s.aws_ec2nodeclasses.yaml at tags v1.14.0 and v1.15.1).
+#   - The profile "should already have a role assigned to it that Karpenter has PassRole permission
+#     on". AWS's own IAMIntegrationPolicy already grants iam:PassRole on KarpenterNodeRole with
+#     iam:PassedToService ec2.amazonaws.com, so no additional permission is needed.
+
+  # The instance profile Karpenter would otherwise mint per EC2NodeClass. Created here, referenced
+  # by name from every EC2NodeClass via spec.instanceProfile, so Karpenter creates no unowned IAM
+  # objects at all and the node role has exactly one holder, inside this stack.
+  KarpenterNodeInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "KarpenterNodeInstanceProfile-${ClusterName}"
+      Roles:
+        - !Ref KarpenterNodeRole
+
+  # The controller role, previously created by install-karpenter.sh outside the stack. Trust is EKS
+  # Pod Identity (BUILD-NOTES correction 4: Pod Identity, not IRSA, so there is no OIDC thumbprint
+  # to manage). The six managed policies are referenced by !Ref, so CloudFormation knows the
+  # attachment exists and can order the deletion correctly.
+  KarpenterControllerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "KarpenterControllerRole-${ClusterName}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: pods.eks.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+              - "sts:TagSession"
+      ManagedPolicyArns:
+        - !Ref NodeLifecyclePolicy
+        - !Ref IAMIntegrationPolicy
+        - !Ref EKSIntegrationPolicy
+        - !Ref InterruptionPolicy
+        - !Ref ZonalShiftPolicy
+        - !Ref ResourceDiscoveryPolicy

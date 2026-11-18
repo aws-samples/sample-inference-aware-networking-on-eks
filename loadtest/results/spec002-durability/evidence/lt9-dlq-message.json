@@ -1,0 +1,17 @@
+{
+    "Messages": [
+        {
+            "MessageId": "e8f742b5-fff8-461a-b504-93c679c50329",
+            "ReceiptHandle": "AQEBDZOE9pcpIDrNUbju8JhpudOzQmvRJlx4zHXEI+okTh3Ur2aFOPfFKOGbIIdolw0Smh1UxwPoNRVjuA4AwbttYtKQk+ARWeKOLOoRCvOBsLG3qkD8Sj9JYENo7dJRBa7kS6PqtstUxFzOJUBWugQ6m0HVyxeXyFYwKUGvL2dsr/3XUVgp6haZ8G/3CMcRdiEn+msxTo7+EqHB9vkhz+e84ysIca0ovR/Iw5aAIuit7rrbKerq/uFDCSwoGN0DJaqWdzM/cQOyWwwp7kkNPO6ykGGOXgNwETjH6Lsz4mkrjMjD6VYaQxLjaPdKhB37+9o1Y0pJ6WBPZGWxKR65+LRc9KsLqJbIYTUP7qhM7tCJ72rbiq4YlcqLoc1jMo1WcJqtocKJ77SJJ4ldK6aa7RNaEw==",
+            "MD5OfBody": "4bd49662e0978f9d09ada097a5fd98e4",
+            "Body": "{\"client_id\": \"diag-2026-09-24\", \"payload\": {\"model\": \"Qwen/Qwen3-8B\", \"prompt\": \"say hi\", \"max_tokens\": 4}, \"job_id\": \"diag-2026-09-24#c3691ee4dcd382e84ecf83744beeb973\", \"submitted_at\": 1790259139}",
+            "Attributes": {
+                "SenderId": "AROAEXAMPLEUNIQUEID01:eks-inference--submit-api-a7a884ab-c7b3-4030-9219-1f0c9ace857e",
+                "ApproximateFirstReceiveTimestamp": "1790259139664",
+                "ApproximateReceiveCount": "6",
+                "SentTimestamp": "1790259139656",
+                "DeadLetterQueueSourceArn": "arn:aws:sqs:us-west-2:111122223333:inference"
+            }
+        }
+    ]
+}

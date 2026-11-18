@@ -1,0 +1,62 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# EKS cluster for the inference-aware stack. Fill CLUSTER_NAME, REGION, and the
+# Kubernetes version from versions.yaml. A small managed node group runs the
+# system add-ons (Karpenter, KEDA, EPP, gateway); Karpenter provisions all GPU
+# and Neuron nodes. Region MUST have both inf2 and EFA-capable GPU families.
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+metadata:
+  name: inference-aware-eks
+  region: us-west-2             # has both inf2 and EFA-capable GPU families. Account 111122223333
+  version: "1.37"              # from versions.yaml choices.eks_kubernetes_version
+iam:
+  withOIDC: true                # required for IRSA (async worker, KEDA)
+# CONTROL-PLANE LOGGING, enabled 2026-10-31 (Well-Architected security and operational excellence).
+# api, audit and authenticator answer "who did what to the cluster"; controllerManager and scheduler
+# are left off because they add volume without that audit value. Retention is EXPLICIT, as for every
+# log group this project creates: without it CloudWatch keeps the group forever and bills for it.
+# Seven days suits a sample; raise it for production. Logging is billed per GB ingested and stored.
+# The group is /aws/eks/<cluster-name>/cluster. Delete it explicitly at teardown.
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["api", "audit", "authenticator"]
+    logRetentionInDays: 7
+managedNodeGroups:
+  - name: system
+    # ---------------------------------------------------------------------------------------
+    # CHANGING THIS INSTANCE TYPE CAN SILENTLY BREAK CHAIN B. Read before a price-performance bump.
+    #
+    # The relay runs here (eksctl-managed, not Karpenter-provisioned), and the relay terminates the
+    # external connection whose idle timeout is Chain B's last term, L = 690 s.
+    #
+    # AWS EC2 instance-types documentation, "Instances built on the AWS Nitro System", read
+    # 2026-08-07:
+    #   Nitro v6: "Default TCP established timeout for idle TCP connections has been reduced from
+    #              432,000 seconds to 350 seconds."
+    #   m6i is listed under NITRO V4, where that default is 432,000 s (five days).
+    #   Nitro v6 general purpose is the EIGHTH generation: M8a, M8i, M8in, M8idn, M8ine, M9g, ...
+    #
+    # SO THE 400-SECOND SURVIVAL MEASURED ON 2026-08-07 DEPENDS ON THIS FAMILY PREDATING NITRO V6.
+    # A bump to m8i or any eighth-generation family moves the node to Nitro v6, the ENI's tracking
+    # timeout becomes 350 s, and 350 sits BELOW the route timeout of 600. Chain B inverts.
+    #
+    # AND IT WOULD INVERT SILENTLY. The symptom is a bare connection reset (code=0, flags=DC), not
+    # a 504, so it reads as a network fault; and on the interactive path there is no idempotency
+    # key, so client retries become full cold prefills. Evidence:
+    # evidence/eni-connection-tracking-400s-2026-08-07.txt
+    #
+    # IF YOU CHANGE THIS: raise the target ENI's TcpEstablishedTimeout to at least 690, or re-run
+    # the 400-second observation and re-derive the chain against what the platform actually permits.
+    instanceType: m6i.xlarge   # Nitro v4. See the note above before changing this.
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 3
+    labels: { role: system }
+# GPU and Neuron capacity is provisioned by Karpenter, not here. See
+# manifests/01-nodepools/. Tag subnets and security groups with
+# karpenter.sh/discovery: inference-aware-eks for Karpenter discovery.
+addons:
+  - name: vpc-cni
+  - name: coredns
+  - name: kube-proxy

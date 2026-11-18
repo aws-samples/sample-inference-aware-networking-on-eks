@@ -1,0 +1,8 @@
+LT-6 durability (run=lt6-1790345865, N=300, D=1)
+  distinct complete            : 300   (expect exactly 300)
+  total GPU runs (sum claim_count): 309
+  extra runs beyond N          : 9   (re-claims of interrupted jobs)
+  jobs run more than once      : 9   (bound: <= 80 interrupted)
+  recovered by sweeper (3.4)   : 6   (message-less orphans, requeued_at set)
+  recovered by SQS redelivery  : 3   (interrupted, message still live)
+  zero lost: PASS   extra runs bounded: PASS   reruns bounded: PASS   => PASS

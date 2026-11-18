@@ -1,0 +1,31 @@
+# Per-request trace: phased-1784703280-
+
+Expected tier (objective): `batch`. Jobs: 30. Traced through the gateway: 30. On the expected tier: 30. Cross-tier: 0.
+
+| correlation_id | submitted | claimed | backend_selected | completed | status | runs | backend_pod | tier | node | accelerator |
+|---|---|---|---|---|---|---|---|---|---|---|
+| phased-1784703280-g0#20cab40f07ef870b05f6118d43de0470 | 1784703298 | 1784703366 | 1784703372 | 1784703372 | complete | 2 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#514d8b57c2ebc830c0f8a891509dd5c4 | 1784703298 | 1784703309 | 1784703317 | 1784703317 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#649c71d33cdc042ddc5796c6d7c37082 | 1784703299 | 1784703371 | 1784703378 | 1784703378 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#676d075c345d68483d599b9dba219420 | 1784703299 | 1784703356 | 1784703362 | 1784703362 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#860a9d8fc021961a2cf7e4aa69178633 | 1784703298 | 1784703298 | 1784703306 | 1784703306 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#865eed6a14d27d296fa09c8c12361ffd | 1784703298 | 1784703315 | 1784703320 | 1784703320 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#b505113da1fa5a5028d36df97570bd74 | 1784703298 | 1784703298 | 1784703303 | 1784703303 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#c941b78f65dc25d92fe7e527b95bd08d | 1784703299 | 1784703348 | 1784703355 | 1784703355 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#e0ec0acdf5b3e368f117088ffc54b63b | 1784703298 | 1784703340 | 1784703346 | 1784703346 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g0#f478dba637c821ec1dcc95ee2ff66ba7 | 1784703298 | 1784703336 | 1784703341 | 1784703341 | complete | 1 | vllm-llama3-batch-798ffd7fcc-wcbhv | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#0bf581974ba85bfc56e07f35eebb74a8 | 1784703299 | 1784703352 | 1784703356 | 1784703356 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#376e6e45e6e1fbb13c764820d20d6623 | 1784703299 | 1784703324 | 1784703330 | 1784703330 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#496c86e77655c928dcd62fee0e42b001 | 1784703298 | 1784703336 | 1784703340 | 1784703340 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#5d87a9186d44931e62615b394957ce5a | 1784703298 | 1784703303 | 1784703309 | 1784703309 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#74d7ac861c7463d880c6a1335c621e05 | 1784703298 | 1784703306 | 1784703311 | 1784703311 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#83b0ec2edd9da992396ceb357d5f1bb1 | 1784703298 | 1784703377 | 1784703382 | 1784703382 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#8e9641eab69514e44a110558e1bc0f68 | 1784703298 | 1784703330 | 1784703336 | 1784703336 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#a4e5fe2338e9fedf2eb2369b1d45a4e6 | 1784703298 | 1784703346 | 1784703352 | 1784703352 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#cd17ed623dd05d6079a49da53f163122 | 1784703298 | 1784703311 | 1784703315 | 1784703315 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g1#e21d17067a8fcc15180d20104d2ebe2b | 1784703299 | 1784703355 | 1784703362 | 1784703362 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g2#16f9461ba922efbec05bbfd7bd74ccf9 | 1784703298 | 1784703377 | 1784703383 | 1784703383 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g2#1e595b4e197e242a7863a0e6f9795577 | 1784703299 | 1784703320 | 1784703324 | 1784703324 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g2#240d929ef729fd38589e7366910a490a | 1784703299 | 1784703331 | 1784703336 | 1784703336 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g2#2479b63ca5abc4fae97fd756b6efd4b2 | 1784703299 | 1784703346 | 1784703352 | 1784703352 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |
+| phased-1784703280-g2#490b8bc8a5948a50c224fdd9c2690f14 | 1784703299 | 1784703341 | 1784703346 | 1784703346 | complete | 1 | vllm-llama3-batch-798ffd7fcc-4g8nh | batch | ip-10-0-0-1.ec2.internal | NVIDIA-GPU (g6.24xlarge, pool=gpu-batch) |

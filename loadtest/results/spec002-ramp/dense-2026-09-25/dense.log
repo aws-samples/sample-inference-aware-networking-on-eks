@@ -1,0 +1,29 @@
+>> DENSE B epp/interleaved rho=0.9 reps=59 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho0.9_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1309, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.253, "e2e_latency_p50_s": 6.187, "e2e_latency_p90_s": 7.166, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=0.9 reps=59 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho0.9_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1887, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 5.999, "e2e_latency_p90_s": 7.063, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=0.95 reps=63 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho0.95_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1887, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.266, "e2e_latency_p50_s": 6.116, "e2e_latency_p90_s": 7.967, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=0.95 reps=63 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho0.95_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1775, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 6.182, "e2e_latency_p90_s": 8.105, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.0 reps=66 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.0_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0886, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 6.507, "e2e_latency_p90_s": 7.936, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.0 reps=66 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.0_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1216, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.269, "e2e_latency_p50_s": 6.458, "e2e_latency_p90_s": 8.644, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.05 reps=69 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.05_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0994, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.268, "e2e_latency_p50_s": 6.484, "e2e_latency_p90_s": 8.494, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.05 reps=69 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.05_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1181, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 6.412, "e2e_latency_p90_s": 8.484, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.1 reps=72 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.1_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0647, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.258, "e2e_latency_p50_s": 7.142, "e2e_latency_p90_s": 8.5, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.1 reps=72 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.1_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0801, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 6.602, "e2e_latency_p90_s": 8.371, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.2 reps=79 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.2_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0596, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.282, "e2e_latency_p50_s": 6.93, "e2e_latency_p90_s": 9.669, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.2 reps=79 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.2_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.044, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 7.048, "e2e_latency_p90_s": 9.744, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.4 reps=92 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.4_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0107, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 7.959, "e2e_latency_p90_s": 10.381, "integrity": "ok"}
+>> DENSE B epp/interleaved rho=1.4 reps=92 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho1.4_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0139, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.263, "e2e_latency_p50_s": 8.041, "e2e_latency_p90_s": 9.804, "integrity": "ok"}
+>> DENSE SWEEP COMPLETE

@@ -1,0 +1,36 @@
+{
+ "window_utc": [
+  "2026-09-24T07:30Z",
+  "2026-09-25T10:10Z"
+ ],
+ "series": {
+  "vllm_prefix_cache_hit_rate": {
+   "query": "rate(vllm:prefix_cache_hits_total[5m])/rate(vllm:prefix_cache_queries_total[5m])",
+   "series": 22,
+   "points": 9273
+  },
+  "vllm_running_requests": {
+   "query": "vllm:num_requests_running",
+   "series": 22,
+   "points": 9179
+  },
+  "vllm_waiting_requests": {
+   "query": "vllm:num_requests_waiting",
+   "series": 22,
+   "points": 9179
+  },
+  "sqs_queue_messages_visible": {
+   "query": "sqs_queue_messages_visible",
+   "series": 1,
+   "points": 1601
+  },
+  "sqs_queue_messages_in_flight": {
+   "query": "sqs_queue_messages_in_flight",
+   "series": 1,
+   "points": 1601
+  }
+ },
+ "not_captured": {
+  "gpu_utilisation": "DCGM exporter has ZERO metrics in Prometheus: GPU utilisation was never scraped for the Qwen3 series and does not exist. Recorded as a gap, not a loss."
+ }
+}

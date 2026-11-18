@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" font-family="sans-serif">
+<text x="360.0" y="20" text-anchor="middle" font-size="15" font-weight="bold">Cold-start replication model vs measurement (N=4), across three regimes</text>
+<text x="360.0" y="38" text-anchor="middle" font-size="11" fill="#555">EPP holds 1-1/R everywhere; round-robin follows 1-N/R until the working set overflows cache, then falls below (eviction)</text>
+<line x1="70" y1="350" x2="690" y2="350" stroke="#333"/><line x1="70" y1="46" x2="70" y2="350" stroke="#333"/>
+<line x1="66" y1="350.0" x2="70" y2="350.0" stroke="#333"/><text x="62" y="354.0" text-anchor="end" font-size="10">0</text>
+<line x1="66" y1="274.0" x2="70" y2="274.0" stroke="#333"/><text x="62" y="278.0" text-anchor="end" font-size="10">0.25</text>
+<line x1="66" y1="198.0" x2="70" y2="198.0" stroke="#333"/><text x="62" y="202.0" text-anchor="end" font-size="10">0.5</text>
+<line x1="66" y1="122.0" x2="70" y2="122.0" stroke="#333"/><text x="62" y="126.0" text-anchor="end" font-size="10">0.75</text>
+<line x1="66" y1="46.0" x2="70" y2="46.0" stroke="#333"/><text x="62" y="50.0" text-anchor="end" font-size="10">1.0</text>
+<text x="194.0" y="366" text-anchor="middle" font-size="10">8</text>
+<text x="318.0" y="366" text-anchor="middle" font-size="10">16</text>
+<text x="442.0" y="366" text-anchor="middle" font-size="10">24</text>
+<text x="566.0" y="366" text-anchor="middle" font-size="10">32</text>
+<text x="690.0" y="366" text-anchor="middle" font-size="10">40</text>
+<text x="380.0" y="412" text-anchor="middle" font-size="11">requests per distinct prefix, R</text>
+<polyline points="194.0,84.0 206.4,80.5 218.8,77.7 231.2,75.2 243.6,73.1 256.0,71.3 268.4,69.8 280.8,68.4 293.2,67.1 305.6,66.0 318.0,65.0 330.4,64.1 342.8,63.3 355.2,62.5 367.6,61.8 380.0,61.2 392.4,60.6 404.8,60.1 417.2,59.6 429.6,59.1 442.0,58.7 454.4,58.3 466.8,57.9 479.2,57.5 491.6,57.2 504.0,56.9 516.4,56.6 528.8,56.3 541.2,56.0 553.6,55.7 566.0,55.5 578.4,55.3 590.8,55.0 603.2,54.8 615.6,54.6 628.0,54.4 640.4,54.3 652.8,54.1 665.2,53.9 677.6,53.8 690.0,53.6" fill="none" stroke="#2a7" stroke-width="2" stroke-dasharray="5,3"/>
+<text x="686" y="62" text-anchor="end" font-size="11" fill="#2a7">EPP model 1-1/R</text>
+<polyline points="194.0,198.0 206.4,184.2 218.8,172.7 231.2,162.9 243.6,154.6 256.0,147.3 268.4,141.0 280.8,135.4 293.2,130.4 305.6,126.0 318.0,122.0 330.4,118.4 342.8,115.1 355.2,112.1 367.6,109.3 380.0,106.8 392.4,104.5 404.8,102.3 417.2,100.3 429.6,98.4 442.0,96.7 454.4,95.0 466.8,93.5 479.2,92.1 491.6,90.7 504.0,89.4 516.4,88.2 528.8,87.1 541.2,86.0 553.6,85.0 566.0,84.0 578.4,83.1 590.8,82.2 603.2,81.3 615.6,80.5 628.0,79.8 640.4,79.0 652.8,78.3 665.2,77.7 677.6,77.0 690.0,76.4" fill="none" stroke="#c73" stroke-width="2" stroke-dasharray="5,3"/>
+<text x="686" y="78" text-anchor="end" font-size="11" fill="#c73">RR model 1-N/R (N=4)</text>
+<circle cx="581.5" cy="54.5" r="5" fill="#2a7" stroke="#000" stroke-width="0.8"/>
+<text x="588.5" y="57.5" font-size="9">cold-start EPP 0.972</text>
+<circle cx="581.5" cy="78.8" r="5" fill="#c73" stroke="#000" stroke-width="0.8"/>
+<text x="588.5" y="81.8" font-size="9">cold-start RR 0.892</text>
+<circle cx="581.5" cy="55.4" r="5" fill="#2a7" stroke="#000" stroke-width="0.8"/>
+<text x="588.5" y="67.4" font-size="9">eviction EPP 0.969 (fits)</text>
+<circle cx="535.0" cy="222.9" r="5" fill="#c73" stroke="#000" stroke-width="0.8"/>
+<text x="542.0" y="225.9" font-size="9">eviction RR 0.418 (EVICTS, off the line)</text>
+<circle cx="194.0" cy="84.6" r="5" fill="#2a7" stroke="#000" stroke-width="0.8"/>
+<text x="201.0" y="78.6" font-size="9">churn EPP 0.873</text>
+<circle cx="194.0" cy="192.5" r="5" fill="#c73" stroke="#000" stroke-width="0.8"/>
+<text x="201.0" y="195.5" font-size="9">churn RR 0.518</text>
+<line x1="535.0" y1="86.4" x2="535.0" y2="219.3" stroke="#900" stroke-width="1" marker-end="url(#a)"/>
+<defs><marker id="a" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#900"/></marker></defs>
+<text x="539.0" y="152.4" font-size="8.5" fill="#900">eviction excess 0.45</text>
+</svg>

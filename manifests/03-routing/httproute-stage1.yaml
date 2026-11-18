@@ -1,0 +1,27 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# HTTPRoute, Stage 1: interactive tier ONLY. Same object name (llm-route) as the
+# full Option A route in httproute.yaml, which supersedes this at Stage 3 once the
+# batch pool exists. Keeping the batch rule out of Stage 1 avoids a ResolvedRefs=False
+# on a pool that does not exist yet. Requires the "Envoy Gateway plus Envoy AI Gateway"
+# stack (design 4.1): the AI Gateway extension server registers InferencePool as a
+# routable backend kind, without which Envoy Gateway rejects it (InvalidKind -> 500).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm-route
+  namespace: inference
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: inference-gateway
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1
+      backendRefs:
+        - group: inference.networking.k8s.io
+          kind: InferencePool
+          name: vllm-llama3-interactive

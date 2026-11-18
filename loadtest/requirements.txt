@@ -1,0 +1,5 @@
+# Load-test driver dependencies (make loadtest-deps). Pinned exactly, to the versions listed in
+# THIRD-PARTY-LICENSES. tests/test_addon_pins.sh rejects any range.
+locust==2.47.0
+boto3==1.43.123
+requests==2.34.2

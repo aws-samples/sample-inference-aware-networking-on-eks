@@ -1,0 +1,303 @@
+[
+  {
+    "kind": "Deployment",
+    "namespace": "envoy-ai-gateway-system",
+    "name": "ai-gateway-controller",
+    "container": "ai-gateway-helm",
+    "image": "docker.io/envoyproxy/ai-gateway-controller:v1.0.0"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "envoy-gateway-system",
+    "name": "envoy-gateway",
+    "container": "envoy-gateway",
+    "image": "docker.io/envoyproxy/gateway:v1.8.3"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "envoy-gateway-system",
+    "name": "envoy-inference-inference-gateway-2e466d4a",
+    "container": "envoy",
+    "image": "docker.io/envoyproxy/envoy:distroless-v1.38.3"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "envoy-gateway-system",
+    "name": "envoy-inference-inference-gateway-2e466d4a",
+    "container": "shutdown-manager",
+    "image": "docker.io/envoyproxy/gateway:v1.8.3"
+  },
+  {
+    "kind": "CronJob",
+    "namespace": "inference",
+    "name": "cost-safety-net",
+    "container": "safety-net",
+    "image": "alpine/k8s:1.34.1"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "inference",
+    "name": "async-worker",
+    "container": "worker",
+    "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-f7a9a0759a93"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "inference",
+    "name": "inference-relay",
+    "container": "relay",
+    "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-1e40093ac21e"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "inference",
+    "name": "vllm-llama3-batch-epp",
+    "container": "epp",
+    "image": "registry.k8s.io/gateway-api-inference-extension/epp:v1.5.0"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "inference",
+    "name": "vllm-llama3-interactive-epp",
+    "container": "epp",
+    "image": "registry.k8s.io/gateway-api-inference-extension/epp:v1.5.0"
+  },
+  {
+    "kind": "Job",
+    "namespace": "inference",
+    "name": "build-async-worker",
+    "container": "buildkit",
+    "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-builder@sha256:cd04bc0c17a68703683d100109bbc1f8389fc5bb5e2946f0d2af062d1dc83238"
+  },
+  {
+    "kind": "Job",
+    "namespace": "inference",
+    "name": "build-async-worker",
+    "container": "ecr-auth",
+    "image": "amazon/aws-cli:latest"
+  },
+  {
+    "kind": "Job",
+    "namespace": "inference",
+    "name": "build-async-worker",
+    "container": "unpack-context",
+    "image": "busybox:1.36"
+  },
+  {
+    "kind": "Job",
+    "namespace": "inference",
+    "name": "cost-safety-net-29767250",
+    "container": "safety-net",
+    "image": "alpine/k8s:1.34.1"
+  },
+  {
+    "kind": "Job",
+    "namespace": "inference",
+    "name": "cost-safety-net-29767252",
+    "container": "safety-net",
+    "image": "alpine/k8s:1.34.1"
+  },
+  {
+    "kind": "Job",
+    "namespace": "inference",
+    "name": "cost-safety-net-29767254",
+    "container": "safety-net",
+    "image": "alpine/k8s:1.34.1"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "keda",
+    "name": "keda-admission-webhooks",
+    "container": "keda-admission-webhooks",
+    "image": "ghcr.io/kedacore/keda-admission-webhooks:2.20.2"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "keda",
+    "name": "keda-operator",
+    "container": "keda-operator",
+    "image": "ghcr.io/kedacore/keda:2.20.2"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "keda",
+    "name": "keda-operator-metrics-apiserver",
+    "container": "keda-operator-metrics-apiserver",
+    "image": "ghcr.io/kedacore/keda-metrics-apiserver:2.20.2"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "aws-node",
+    "container": "aws-eks-nodeagent",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/amazon/aws-network-policy-agent:v1.3.7-eksbuild.1"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "aws-node",
+    "container": "aws-node",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/amazon-k8s-cni:v1.22.3-eksbuild.1"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "aws-node",
+    "container": "aws-vpc-cni-init",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/amazon-k8s-cni-init:v1.22.3-eksbuild.1"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "eks-pod-identity-agent",
+    "container": "eks-pod-identity-agent",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/eks-pod-identity-agent:v0.1.37"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "eks-pod-identity-agent",
+    "container": "eks-pod-identity-agent-init",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/eks-pod-identity-agent:v0.1.37"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "kube-proxy",
+    "container": "kube-proxy",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/kube-proxy:v1.34.6-eksbuild.17"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "kube-system",
+    "name": "neuron-device-plugin-daemonset",
+    "container": "neuron-device-plugin",
+    "image": "public.ecr.aws/neuron/neuron-device-plugin:2.22.4.0"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "kube-system",
+    "name": "coredns",
+    "container": "coredns",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/coredns:v1.12.4-eksbuild.18"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "kube-system",
+    "name": "karpenter",
+    "container": "controller",
+    "image": "public.ecr.aws/karpenter/controller:1.14.0@sha256:723130949e4cab989461ff07d1be4cd781d63515432494641b33c235f300ae23"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "kube-system",
+    "name": "metrics-server",
+    "container": "metrics-server",
+    "image": "602401143452.dkr.ecr.us-west-2.amazonaws.com/eks/metrics-server:v0.9.0-eksbuild.5"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "monitoring",
+    "name": "kps-prometheus-node-exporter",
+    "container": "node-exporter",
+    "image": "quay.io/prometheus/node-exporter:v1.12.1-distroless"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "monitoring",
+    "name": "kps-grafana",
+    "container": "grafana",
+    "image": "docker.io/grafana/grafana:13.1.0"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "monitoring",
+    "name": "kps-grafana",
+    "container": "grafana-sc-dashboard",
+    "image": "quay.io/kiwigrid/k8s-sidecar:2.8.1"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "monitoring",
+    "name": "kps-grafana",
+    "container": "grafana-sc-datasources",
+    "image": "quay.io/kiwigrid/k8s-sidecar:2.8.1"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "monitoring",
+    "name": "kps-kube-prometheus-stack-operator",
+    "container": "kube-prometheus-stack",
+    "image": "quay.io/prometheus-operator/prometheus-operator:v0.92.1"
+  },
+  {
+    "kind": "Deployment",
+    "namespace": "monitoring",
+    "name": "kps-kube-state-metrics",
+    "container": "kube-state-metrics",
+    "image": "registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.19.1"
+  },
+  {
+    "kind": "StatefulSet",
+    "namespace": "monitoring",
+    "name": "alertmanager-kps-kube-prometheus-stack-alertmanager",
+    "container": "alertmanager",
+    "image": "quay.io/prometheus/alertmanager:v0.33.1"
+  },
+  {
+    "kind": "StatefulSet",
+    "namespace": "monitoring",
+    "name": "alertmanager-kps-kube-prometheus-stack-alertmanager",
+    "container": "config-reloader",
+    "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.92.1"
+  },
+  {
+    "kind": "StatefulSet",
+    "namespace": "monitoring",
+    "name": "alertmanager-kps-kube-prometheus-stack-alertmanager",
+    "container": "init-config-reloader",
+    "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.92.1"
+  },
+  {
+    "kind": "StatefulSet",
+    "namespace": "monitoring",
+    "name": "prometheus-kps-kube-prometheus-stack-prometheus",
+    "container": "config-reloader",
+    "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.92.1"
+  },
+  {
+    "kind": "StatefulSet",
+    "namespace": "monitoring",
+    "name": "prometheus-kps-kube-prometheus-stack-prometheus",
+    "container": "init-config-reloader",
+    "image": "quay.io/prometheus-operator/prometheus-config-reloader:v0.92.1"
+  },
+  {
+    "kind": "StatefulSet",
+    "namespace": "monitoring",
+    "name": "prometheus-kps-kube-prometheus-stack-prometheus",
+    "container": "prometheus",
+    "image": "quay.io/prometheus/prometheus:v3.13.1-distroless"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "nvidia-device-plugin",
+    "name": "nvdp-nvidia-device-plugin",
+    "container": "nvidia-device-plugin-ctr",
+    "image": "nvcr.io/nvidia/k8s-device-plugin:v0.19.3"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "nvidia-device-plugin",
+    "name": "nvdp-nvidia-device-plugin-mps-control-daemon",
+    "container": "mps-control-daemon-ctr",
+    "image": "nvcr.io/nvidia/k8s-device-plugin:v0.19.3"
+  },
+  {
+    "kind": "DaemonSet",
+    "namespace": "nvidia-device-plugin",
+    "name": "nvdp-nvidia-device-plugin-mps-control-daemon",
+    "container": "mps-control-daemon-mounts",
+    "image": "nvcr.io/nvidia/k8s-device-plugin:v0.19.3"
+  }
+]

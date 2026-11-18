@@ -1,0 +1,76 @@
+{
+  "verdict": "PASS",
+  "bound_s": 5.0,
+  "cells_within_bound": 4,
+  "cells_total": 4,
+  "free_time_distribution_s": [
+    0.8,
+    0.806,
+    0.81,
+    0.859
+  ],
+  "free_time_min_s": 0.8,
+  "free_time_max_s": 0.859,
+  "any_preemption_moved": false,
+  "poll_interval_s": 0.25,
+  "max_tokens": 1024,
+  "gateway": "RELAY-LB.example.com",
+  "cells": [
+    {
+      "stream": false,
+      "rep": 1,
+      "baseline_running": 0.0,
+      "peak_running": 1.0,
+      "first_byte_at_offset_s": null,
+      "freed": true,
+      "free_time_s": 0.806,
+      "within_bound": true,
+      "preemptions_before": 0.0,
+      "preemptions_after": 0.0,
+      "preemptions_moved": false,
+      "final_running": 0.0
+    },
+    {
+      "stream": false,
+      "rep": 2,
+      "baseline_running": 0.0,
+      "peak_running": 1.0,
+      "first_byte_at_offset_s": null,
+      "freed": true,
+      "free_time_s": 0.859,
+      "within_bound": true,
+      "preemptions_before": 0.0,
+      "preemptions_after": 0.0,
+      "preemptions_moved": false,
+      "final_running": 0.0
+    },
+    {
+      "stream": true,
+      "rep": 1,
+      "baseline_running": 0.0,
+      "peak_running": 1.0,
+      "first_byte_at_offset_s": -0.27138185501098633,
+      "freed": true,
+      "free_time_s": 0.8,
+      "within_bound": true,
+      "preemptions_before": 0.0,
+      "preemptions_after": 0.0,
+      "preemptions_moved": false,
+      "final_running": 0.0
+    },
+    {
+      "stream": true,
+      "rep": 2,
+      "baseline_running": 0.0,
+      "peak_running": 1.0,
+      "first_byte_at_offset_s": -0.3702206611633301,
+      "freed": true,
+      "free_time_s": 0.81,
+      "within_bound": true,
+      "preemptions_before": 0.0,
+      "preemptions_after": 0.0,
+      "preemptions_moved": false,
+      "final_running": 0.0
+    }
+  ]
+}

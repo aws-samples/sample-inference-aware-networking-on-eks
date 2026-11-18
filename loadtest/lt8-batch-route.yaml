@@ -1,0 +1,37 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# LT-8 batch round-robin route (MEASUREMENT ONLY, delete at teardown).
+# Adds ONE more-specific rule to reach the cache-blind batch Service for the round-robin arms.
+# It does NOT modify the canonical llm-route (manifests/03-routing/httproute.yaml); it is a
+# separate HTTPRoute attached to the same Gateway.
+#
+# Precedence (Gateway API): resolution is by longest matching path first, THEN by header-match
+# count. This rule matches /v1 PLUS TWO headers (objective=batch AND x-pub-arm=rr), so it
+# outranks the canonical one-header batch rule (/v1 + objective=batch) whenever x-pub-arm=rr is
+# present, and is invisible to all other traffic. The worker sends x-pub-arm=rr only for the RR
+# cells (via PUB_ARM); EPP cells send no x-pub-arm and fall through to the canonical batch rule
+# (InferencePool + Endpoint Picker). So one env var on the worker selects the arm, and the
+# permanent invariants (INV7 on the canonical route) are untouched.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: lt8-batch-rr-route
+  namespace: inference
+  labels: { lt8: rr-route }
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: inference-gateway
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /v1 }
+          headers:
+            - { type: Exact, name: x-gateway-inference-objective, value: batch }
+            - { type: Exact, name: x-pub-arm, value: rr }
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: vllm-llama3-batch-rr
+          port: 8000
+      timeouts: { request: "600s", backendRequest: "600s" }

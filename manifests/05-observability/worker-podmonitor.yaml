@@ -1,0 +1,20 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Scrape worker_claims_total from the async worker (Phase 2.2). This is the
+# scale-accurate GPU-run counter the idempotency load test asserts against:
+# the delta of sum(worker_claims_total) over a run must equal N for N distinct
+# jobs submitted D times each. Incremented once per won, still-owned claim,
+# immediately before the vLLM call.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: async-worker
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: async-worker
+  podMetricsEndpoints:
+    - port: metrics        # containerPort 9100 (deployment.yaml)
+      path: /metrics
+      interval: 5s

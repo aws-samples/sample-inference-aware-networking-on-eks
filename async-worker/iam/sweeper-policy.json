@@ -1,0 +1,11 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Effect": "Allow",
+      "Action": ["sqs:SendMessage", "sqs:GetQueueAttributes"],
+      "Resource": "arn:aws:sqs:REGION:ACCT:inference" },
+    { "Effect": "Allow",
+      "Action": ["dynamodb:Scan", "dynamodb:Query", "dynamodb:UpdateItem"],
+      "Resource": "arn:aws:dynamodb:REGION:ACCT:table/inference-jobs" }
+  ]
+}

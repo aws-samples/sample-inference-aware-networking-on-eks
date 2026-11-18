@@ -1,0 +1,4 @@
+vllm-llama3-batch-68ffdcdf89-cmkf2 ip-10-0-0-1.ec2.internal
+vllm-llama3-batch-68ffdcdf89-jpmnx ip-10-0-0-1.ec2.internal
+vllm-llama3-batch-68ffdcdf89-n6svh ip-10-0-0-1.ec2.internal
+vllm-llama3-batch-68ffdcdf89-t9bws ip-10-0-0-1.ec2.internal

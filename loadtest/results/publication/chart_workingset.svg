@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="320" font-family="sans-serif">
+<text x="320.0" y="22" text-anchor="middle" font-size="14" font-weight="bold">Round-robin hit rate vs number of distinct prefixes (NVIDIA, cache 195k)</text>
+<text x="320.0" y="38" text-anchor="middle" font-size="10.5" fill="#666">both fit the 195k cache: the drop is cold-start replication</text>
+<text x="320.0" y="51" text-anchor="middle" font-size="10.5" fill="#666">(more distinct prefixes = more prefix-on-every-replica warmings under round-robin)</text>
+<line x1="56" y1="262" x2="624" y2="262" stroke="#999"/>
+<rect x="56" y="52.483000000000004" width="76" height="209.517" fill="#2a7"/>
+<text x="94.0" y="46.483000000000004" text-anchor="middle" font-size="12" font-weight="bold">0.9977</text>
+<text x="94.0" y="277" text-anchor="middle" font-size="10">6 prefixes</text>
+<text x="94.0" y="289" text-anchor="middle" font-size="10">(~13k)</text>
+<rect x="158" y="74.57500000000002" width="76" height="187.42499999999998" fill="#c73"/>
+<text x="196.0" y="68.57500000000002" text-anchor="middle" font-size="12" font-weight="bold">0.8925</text>
+<text x="196.0" y="277" text-anchor="middle" font-size="10">48 prefixes</text>
+<text x="196.0" y="289" text-anchor="middle" font-size="10">(~100k)</text>
+</svg>

@@ -1,0 +1,21 @@
+>> cell A (epp/grouped) rep 1
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.9135, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.346, "e2e_latency_p50_s": 7.38, "e2e_latency_p90_s": 7.624}
+>> cell A (epp/grouped) rep 2
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.9135, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.327, "e2e_latency_p50_s": 7.363, "e2e_latency_p90_s": 7.641}
+>> cell B (epp/interleaved) rep 1
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 12.391, "e2e_latency_p90_s": 14.456}
+>> cell B (epp/interleaved) rep 2
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.252, "e2e_latency_p50_s": 12.405, "e2e_latency_p90_s": 14.521}
+>> cell C (rr/grouped) rep 1
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6643, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 6.836, "e2e_latency_p90_s": 7.311}
+>> cell C (rr/grouped) rep 2
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6643, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 6.814, "e2e_latency_p90_s": 7.348}
+>> cell D (rr/interleaved) rep 1
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 13.303, "e2e_latency_p90_s": 15.312}
+>> cell D (rr/interleaved) rep 2
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 12.764, "e2e_latency_p90_s": 15.654}
+=== LT-8 2x2 summary (sign reported as measured) ===
+mean hit rate: {'A': 0.9135, 'B': 0.0, 'C': 0.6643, 'D': 0.0}  reps: {'A': 2, 'B': 2, 'C': 2, 'D': 2}
+(A-B) grouping benefit under EPP = +0.9135
+(C-D) grouping benefit under RR  = +0.6643
+SIGN: COMPLEMENTS (A-B)>(C-D)

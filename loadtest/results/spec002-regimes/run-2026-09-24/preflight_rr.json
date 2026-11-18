@@ -1,0 +1,82 @@
+{
+  "label": "preflight_rr",
+  "arm": "rr",
+  "model": "Qwen/Qwen3-8B",
+  "seed": 20260924,
+  "replicas": 4,
+  "replica_pods": [
+    "10.0.0.1:8000",
+    "10.0.0.1:8000",
+    "10.0.0.1:8000",
+    "10.0.0.1:8000"
+  ],
+  "steady_seconds": 60.9,
+  "concurrency": 8,
+  "requests_ok": 312,
+  "requests_failed": 0,
+  "prefix_cache_hits": 653952.0,
+  "prefix_cache_queries": 657384.0,
+  "prefix_cache_hit_rate": 0.9948,
+  "ttft_p50_s": 0.0686,
+  "ttft_p90_s": 0.0756,
+  "ttft_n": 312,
+  "inter_token_latency_p50_s": 0.0237,
+  "inter_token_latency_p90_s": 0.0242,
+  "throughput_gen_tokens_per_s": 328.0,
+  "mean_colocation_concentration": 0.385,
+  "per_group_colocation": [
+    {
+      "group": 0,
+      "per_pod": {
+        "10.0.0.1:8000": 6.0,
+        "10.0.0.1:8000": 2.0,
+        "10.0.0.1:8000": 3.0,
+        "10.0.0.1:8000": 2.0
+      },
+      "concentration": 0.462
+    },
+    {
+      "group": 1,
+      "per_pod": {
+        "10.0.0.1:8000": 3.0,
+        "10.0.0.1:8000": 2.0,
+        "10.0.0.1:8000": 3.0,
+        "10.0.0.1:8000": 5.0
+      },
+      "concentration": 0.385
+    },
+    {
+      "group": 2,
+      "per_pod": {
+        "10.0.0.1:8000": 1.0,
+        "10.0.0.1:8000": 4.0,
+        "10.0.0.1:8000": 3.0,
+        "10.0.0.1:8000": 5.0
+      },
+      "concentration": 0.385
+    },
+    {
+      "group": 3,
+      "per_pod": {
+        "10.0.0.1:8000": 4.0,
+        "10.0.0.1:8000": 3.0,
+        "10.0.0.1:8000": 3.0,
+        "10.0.0.1:8000": 3.0
+      },
+      "concentration": 0.308
+    }
+  ],
+  "per_replica_request_share": {
+    "10.0.0.1:8000": 80.0,
+    "10.0.0.1:8000": 77.0,
+    "10.0.0.1:8000": 75.0,
+    "10.0.0.1:8000": 80.0
+  },
+  "per_replica_share_fraction": {
+    "10.0.0.1:8000": 0.256,
+    "10.0.0.1:8000": 0.247,
+    "10.0.0.1:8000": 0.24,
+    "10.0.0.1:8000": 0.256
+  },
+  "preemptions_during_run": 0.0
+}

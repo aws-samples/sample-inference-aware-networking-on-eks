@@ -1,0 +1,112 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# vLLM premium Deployment and Service. Added 2026-09-21 (spec-002, the maintainer's ruling 1).
+#
+# THE RESERVED CLASS GOES LIVE. spec-001 reserved `premium` in the capability contract and
+# deliberately did not serve it, on the stated grounds that "a three-class matrix would have a row
+# nothing can satisfy, and a capability class that silently resolves to a weaker tier is worse than
+# one that refuses. It becomes real when a third model earns its capacity." Qwen3-32B-AWQ is that
+# third model, so the activation condition is satisfied.
+#
+# INVARIANT 1: labels app+tier must equal the premium InferencePool selector.
+# INVARIANT 5: the nvidia.com/gpu toleration must match the gpu-premium NodePool taint.
+#
+# --max-model-len=32768 IS THE MAINTAINER'S RULING 2, and it is the rung that makes the ladder mean
+# something. The three classes now bound context at 2,048 / 8,192 / 32,768, so the
+# 8,193-to-32,768 band flips from `unservable:context-bound` to servable with NO new mechanism:
+# the relay's existing cheapest-class-that-fits loop reaches premium once premium is in
+# CONTEXT_LIMIT. 16,384 stays recorded as the fallback, to be taken only on the measurement below
+# and only by a further ruling.
+#
+# MEASURED 2026-09-22 BESIDE THE DERIVATION (ruling 2's binding condition, now met): num_gpu_blocks
+# 5152 x block_size 16 = 82,432 tokens, KV memory 20.13 GiB, concurrency 2.52 at 32,768, on the FINAL
+# config (non-thinking template mounted, g6e.xlarge). 262,206 measured bytes/token vs 262,144 derived
+# (0.02 percent); the 85,000-token total ran 3.0 percent high, all in the budget term, inside
+# pre-check B's 3.8 percent. The 32,768 rung stands. spikes/premium-bringup-2026-09-22/RESULT.md
+#
+# THE DERIVATION AS WRITTEN BEFORE THE MEASUREMENT, kept so the comparison stays auditable: 256 KiB per token against a
+# ~22.3 GB budget gives roughly 85,000 tokens, about 2.6 concurrent sequences at 32,768. Before any
+# working set, experiment or capacity statement is designed against it, read num_gpu_blocks from
+# the metrics endpoint and record it beside the derivation. Pre-check B's L4 derivation proved 3.8
+# percent high; materially below that, STOP and report the number.
+#
+# ONE REPLICA AND NO SCALEDOBJECT, which is economy's committed shape and is load-bearing rather
+# than provisional: the reactivation condition for direct batch+premium admission is "premium gains
+# a ScaledObject and more than one replica". Shipping either here would half-satisfy that condition
+# on day one. Premium's exposure is instead bounded by construction, because only a request already
+# admitted as interactive+premium can reach the pool by promotion.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama3-premium
+  namespace: inference
+  # spike-safety-net=managed is the selector the cost safety net scales to zero on expiry. It must
+  # live in the manifest: applied by hand it is lost on the next fresh deploy. The `vllm-` name
+  # prefix independently satisfies the net's discovery backstop, so BOTH of its mechanisms cover
+  # this object. Pre-check A's first draft satisfied neither and would have run a node overnight.
+  labels: { app: vllm-llama3, tier: premium, spike-safety-net: managed }
+spec:
+  replicas: 1
+  # Recreate, not RollingUpdate: a GPU pod's rollout surge would request a second L40S and drive
+  # Karpenter to a needlessly large node. One pod at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: vllm-llama3, tier: premium }
+  template:
+    metadata:
+      labels: { app: vllm-llama3, tier: premium }
+    spec:
+      serviceAccountName: vllm
+      nodeSelector:
+        karpenter.k8s.aws/instance-family: g6e   # invariant: matches the gpu-premium NodePool
+        tier: premium
+      tolerations:
+        - { key: nvidia.com/gpu, operator: Equal, value: "true", effect: NoSchedule }
+      containers:
+        - name: vllm
+          image: public.ecr.aws/deep-learning-containers/vllm:0.24.0-gpu-py312-cu130-ubuntu22.04-ec2-v1.3-soci   # versions.yaml choices.vllm_image
+          args:
+            # PREMIUM TIER, spec-002. Revision pinned: a moving tag reproduces nothing.
+            - --model=Qwen/Qwen3-32B-AWQ
+            - --revision=0499c3ac83fdef8810b907a23894ba91e95eddd8
+            - --enable-prefix-caching
+            - --max-model-len=32768          # the maintainer's ruling 2; 16,384 is the recorded fallback
+            - --gpu-memory-utilization=0.9
+            # THINKING FORCED OFF, server-side (spec-002 4.2; ruling 2026-09-22). One committed template for
+            # the whole Qwen3 family on every tier, so mode cannot drift per tier. INV20 holds this path
+            # and the ConfigMap bytes in agreement.
+            - --chat-template=/etc/vllm/chat-templates/qwen3-nonthinking.jinja
+            - --port=8000
+          env:
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: hf-token, key: token, optional: true }   # Qwen3 is Apache 2.0, ungated
+          volumeMounts:
+            - { name: chat-template, mountPath: /etc/vllm/chat-templates, readOnly: true }
+          ports:
+            - { name: http, containerPort: 8000 }
+          resources:
+            limits: { nvidia.com/gpu: 1 }
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            # 120 x 10s = 20 min. More generous than the 8B tiers' 10 min because this is a FIRST
+            # pull of a 19.33 GB quantized checkpoint plus AWQ kernel warmup, not a warm cache.
+            failureThreshold: 120
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+      volumes:
+        - name: chat-template
+          configMap: { name: chat-template-qwen3-nonthinking }   # manifests/02-serving/chat-template-qwen3-nonthinking.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama3-premium
+  namespace: inference
+spec:
+  selector: { app: vllm-llama3, tier: premium }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }

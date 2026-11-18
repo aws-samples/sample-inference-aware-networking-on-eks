@@ -1,0 +1,31 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# NodePool, Neuron. Taints with aws.amazon.com/neuron (matches the Neuron
+# Deployment toleration and the neurondevice alias).
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: neuron
+spec:
+  template:
+    metadata:
+      labels:
+        tier: neuron        # own tier: do NOT mix Neuron into the NVIDIA batch pool (section 12)
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: neuron        # ec2nodeclass-neuron.yaml: AL2023 Neuron AMI (has Neuron drivers)
+      taints:
+        - key: aws.amazon.com/neuron
+          value: "true"
+          effect: NoSchedule
+      requirements:
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["inf2", "trn2"]
+  limits:
+    aws.amazon.com/neuron: "16"
+  disruption:
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 300s

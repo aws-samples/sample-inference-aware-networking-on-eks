@@ -1,0 +1,7 @@
+phase,arm,condition,concurrency,prompt_tokens_approx,peak_kv_cache_usage_perc,peak_running,preempt_after
+2-kv-semantics,pc_off,A_one_short,1,5,0.25,1.0,0.0
+2-kv-semantics,pc_off,B_one_long,1,1260,0.25,1.0,0.0
+2-kv-semantics,pc_off,C_many_short,4,5,1.0,4.0,0.0
+2-kv-semantics,pc_on,A_one_short,1,5,0.0312,1.0,0.0
+2-kv-semantics,pc_on,B_one_long,1,1260,0.2305,1.0,0.0
+2-kv-semantics,pc_on,C_many_short,4,5,0.1406,4.0,0.0

@@ -1,0 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Scrape submit_api_submissions_total from the submit API (async-worker/submit_api.py /metrics).
+# This is the entry point of the asynchronous path and the anchor for reconciliation: every
+# accepted submission is one enqueue. INVARIANT 8: namespace inference.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: submit-api
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: submit-api
+  podMetricsEndpoints:
+    - port: http           # containerPort 8080
+      path: /metrics
+      interval: 15s

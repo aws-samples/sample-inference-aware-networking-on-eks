@@ -1,0 +1,34 @@
+{
+  "cell": "A",
+  "arm": "epp",
+  "mode": "grouped",
+  "salt": "lt11-A-rho0.8-t2-r1",
+  "P": 52,
+  "R_requested": 12,
+  "prefix_reps": 67,
+  "replicas": 4,
+  "n_start": 4,
+  "n_end": 4,
+  "requests_sent": 624,
+  "requests_ok": 624,
+  "prefix_cache_hits": 987136.0,
+  "prefix_cache_queries": 1193088.0,
+  "prefix_cache_hit_rate": 0.8274,
+  "requests_counted": 624.0,
+  "effective_R": 12.0,
+  "per_replica_share": {
+    "vllm-llama3-batch-79575f79b8-48ff2": 477.0,
+    "vllm-llama3-batch-79575f79b8-gqrt2": 147.0,
+    "vllm-llama3-batch-79575f79b8-vsd6d": 0.0,
+    "vllm-llama3-batch-79575f79b8-znkrf": 0.0
+  },
+  "per_replica_share_fraction": {
+    "vllm-llama3-batch-79575f79b8-48ff2": 0.764,
+    "vllm-llama3-batch-79575f79b8-gqrt2": 0.236,
+    "vllm-llama3-batch-79575f79b8-vsd6d": 0.0,
+    "vllm-llama3-batch-79575f79b8-znkrf": 0.0
+  },
+  "e2e_latency_p50_s": 4.976,
+  "e2e_latency_p90_s": 5.217,
+  "max_concentration_fraction": 0.764
+}

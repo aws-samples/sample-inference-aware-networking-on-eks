@@ -1,0 +1,95 @@
+=== apply the round-robin route and Service (idempotent; required for the rr arm) ===
+service/vllm-llama3-batch-rr unchanged
+httproute.gateway.networking.k8s.io/lt8-batch-rr-route configured
+=== escalation gate 0: MODEL_ID must equal what the batch Deployment actually serves ===
+  MODEL_ID=Qwen/Qwen3-8B agrees with the served model
+=== escalation gate: re-derive C on the pinned instance, assert == 24064 ===
+  num_gpu_blocks=1504  C=24064 tokens
+=== verify L live per rho (tokenize the ACTUAL salted prefix), record measured rho ===
+  rho_target=0.8 reps=53 L_actual=1499 rho_actual=0.8098
+  rho_target=1.0 reps=66 L_actual=1863 rho_actual=1.0064
+  rho_target=1.2 reps=79 L_actual=2227 rho_actual=1.2031
+  rho_target=1.6 reps=106 L_actual=2983 rho_actual=1.6115
+deployment "vllm-llama3-batch" successfully rolled out
+>> gateway: http://envoy-inference-inference-gateway-2e466d4a.envoy-gateway-system.svc.cluster.local
+=== PREFLIGHT GATE: the rr arm must be cache-blind (spread), not the Endpoint Picker ===
+LT8 {"cell": "PF", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6598, "effective_R": 12.0, "requests_ok": 48, "max_concentration_fraction": 0.333, "e2e_latency_p50_s": 2.601, "e2e_latency_p90_s": 2.659, "integrity": "ok"}
+  preflight rr: hit=0.6598 maxconc=0.333 (want hit<0.8 and maxconc<0.5)
+  PREFLIGHT PASS: the rr arm reaches the cache-blind Service
+=== PRIMARY: interleaved cliff (B EPP, D RR) ===
+>> LT-11 B (epp/interleaved) rho=0.8 reps=53 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho0.8_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.3583, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.252, "e2e_latency_p50_s": 5.438, "e2e_latency_p90_s": 6.198, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=0.8 reps=53 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho0.8_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.3205, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 5.548, "e2e_latency_p90_s": 6.578, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=0.8 reps=53 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho0.8_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1982, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 5.707, "e2e_latency_p90_s": 6.414, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=0.8 reps=53 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho0.8_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.2129, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.253, "e2e_latency_p50_s": 5.646, "e2e_latency_p90_s": 6.394, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=1.0 reps=66 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho1.0_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1202, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 6.45, "e2e_latency_p90_s": 7.467, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=1.0 reps=66 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho1.0_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1029, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 6.463, "e2e_latency_p90_s": 8.067, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=1.0 reps=66 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho1.0_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1125, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.252, "e2e_latency_p50_s": 6.444, "e2e_latency_p90_s": 7.207, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=1.0 reps=66 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho1.0_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.1033, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 6.491, "e2e_latency_p90_s": 7.233, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=1.2 reps=79 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho1.2_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0556, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.253, "e2e_latency_p50_s": 7.072, "e2e_latency_p90_s": 9.361, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=1.2 reps=79 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho1.2_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0577, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 7.23, "e2e_latency_p90_s": 8.791, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=1.2 reps=79 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho1.2_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0329, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.258, "e2e_latency_p50_s": 6.969, "e2e_latency_p90_s": 8.177, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=1.2 reps=79 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho1.2_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0137, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 6.968, "e2e_latency_p90_s": 7.917, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=1.6 reps=106 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho1.6_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.0053, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 8.456, "e2e_latency_p90_s": 9.943, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=1.6 reps=106 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_B_rho1.6_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.011, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.263, "e2e_latency_p50_s": 8.789, "e2e_latency_p90_s": 10.719, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=1.6 reps=106 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho1.6_r1.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0053, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 8.007, "e2e_latency_p90_s": 9.522, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=1.6 reps=106 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_D_rho1.6_r2.json
+LT8 {"cell": "D", "arm": "rr", "mode": "interleaved", "prefix_cache_hit_rate": 0.0066, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 8.011, "e2e_latency_p90_s": 9.766, "integrity": "ok"}
+=== SECONDARY: grouped flatness (A EPP, C RR) ===
+>> LT-11 A (epp/grouped) rho=0.8 reps=53 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho0.8_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8941, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.303, "e2e_latency_p50_s": 4.788, "e2e_latency_p90_s": 4.848, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=0.8 reps=53 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho0.8_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.88, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.296, "e2e_latency_p50_s": 4.772, "e2e_latency_p90_s": 4.81, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=0.8 reps=53 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho0.8_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6622, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.26, "e2e_latency_p50_s": 4.571, "e2e_latency_p90_s": 4.619, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=0.8 reps=53 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho0.8_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6638, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.263, "e2e_latency_p50_s": 4.576, "e2e_latency_p90_s": 4.631, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=1.0 reps=66 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho1.0_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8948, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.293, "e2e_latency_p50_s": 4.961, "e2e_latency_p90_s": 5.022, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=1.0 reps=66 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho1.0_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8927, "effective_R": 11.94, "requests_ok": 621, "max_concentration_fraction": 0.282, "e2e_latency_p50_s": 4.947, "e2e_latency_p90_s": 5.013, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=1.0 reps=66 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho1.0_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.664, "effective_R": 11.98, "requests_ok": 623, "max_concentration_fraction": 0.265, "e2e_latency_p50_s": 4.706, "e2e_latency_p90_s": 4.779, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=1.0 reps=66 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho1.0_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6645, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.263, "e2e_latency_p50_s": 4.719, "e2e_latency_p90_s": 4.773, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=1.2 reps=79 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho1.2_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8925, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.308, "e2e_latency_p50_s": 5.109, "e2e_latency_p90_s": 5.179, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=1.2 reps=79 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho1.2_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.886, "effective_R": 11.98, "requests_ok": 623, "max_concentration_fraction": 0.295, "e2e_latency_p50_s": 5.096, "e2e_latency_p90_s": 5.163, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=1.2 reps=79 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho1.2_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6613, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.256, "e2e_latency_p50_s": 4.824, "e2e_latency_p90_s": 4.879, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=1.2 reps=79 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho1.2_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6623, "effective_R": 11.98, "requests_ok": 623, "max_concentration_fraction": 0.265, "e2e_latency_p50_s": 4.826, "e2e_latency_p90_s": 4.891, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=1.6 reps=106 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho1.6_r1.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.8969, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.293, "e2e_latency_p50_s": 5.424, "e2e_latency_p90_s": 5.484, "integrity": "ok"}
+>> LT-11 A (epp/grouped) rho=1.6 reps=106 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_A_rho1.6_r2.json
+LT8 {"cell": "A", "arm": "epp", "mode": "grouped", "prefix_cache_hit_rate": 0.9065, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.301, "e2e_latency_p50_s": 5.415, "e2e_latency_p90_s": 5.475, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=1.6 reps=106 rep=1 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho1.6_r1.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6685, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.264, "e2e_latency_p50_s": 5.07, "e2e_latency_p90_s": 5.138, "integrity": "ok"}
+>> LT-11 C (rr/grouped) rho=1.6 reps=106 rep=2 -> loadtest/results/spec002-ramp/run-2026-09-24/cell_C_rho1.6_r2.json
+LT8 {"cell": "C", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6669, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.261, "e2e_latency_p50_s": 5.091, "e2e_latency_p90_s": 5.156, "integrity": "ok"}
+=== LT-11 curve (hit rate vs rho, mean of reps) ===
+  rho | B epp intl |  D rr intl |  A epp grp |  C rr grp | R(B)
+  0.8 |     0.3394 |     0.2056 |     0.8871 |     0.663 | 12.0
+  1.0 |     0.1116 |     0.1079 |     0.8938 |    0.6643 | 12.0
+  1.2 |     0.0566 |     0.0233 |     0.8892 |    0.6618 | 12.0
+  1.6 |     0.0081 |      0.006 |     0.9017 |    0.6677 | 12.0
+ 2.54 |      0.000 |      0.000 |     0.9135 |    0.6643 | 12  (LT-8, reused)
+
+Step vs ramp is a judgment on the B/D columns above (fill the report). Interaction answerable only where B and D are both non-zero.
+>> per-cell JSON + rho_map.txt in loadtest/results/spec002-ramp/run-2026-09-24/ ; fill LT-11-REPORT.md
+>> run ended; KEDA pin paused-replicas=4 DELIBERATELY LEFT IN PLACE (no-release order)

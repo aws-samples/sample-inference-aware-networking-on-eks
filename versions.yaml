@@ -1,0 +1,188 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# SINGLE SOURCE OF TRUTH for versions. Resolve every value before building.
+# Split into: facts (verified API strings, not a choice), hard minimums
+# (constraints the manifests depend on), and deployment choices (pinned to what
+# you validate). verified_on records when the choices were last checked.
+# Pinned 2026-07-19 against primary sources (see verified_by).
+
+facts:
+  inferencepool_api: inference.networking.k8s.io/v1        # v1 GA
+  inferenceobjective_api: llm-d.ai/v1                    # moved from inference.networking.x-k8s.io/v1alpha2 to llm-d with GAIE v1.6.0
+  httproute_api: gateway.networking.k8s.io/v1
+  ec2nodeclass_api: karpenter.k8s.aws/v1
+  nodepool_api: karpenter.sh/v1
+  keda_api: keda.sh/v1alpha1
+  neuron_resource_name: aws.amazon.com/neuron              # canonical name. neurondevice was the old name, renamed to neuron and removed in Neuron 2.20 (last present in 2.19). neuroncore is a separate resource (individual cores).
+
+hard_minimums:
+  karpenter: ">=1.11"      # networkInterfaces on EC2NodeClass added in 1.11
+  karpenter_nodeclassref_group_kind: ">=1.1.0"  # group+kind required since 1.1.0
+
+# --- Deployment choices: pinned 2026-07-19, verified against primary sources ---
+choices:
+  eks_kubernetes_version: "1.37"      # EKS default since 2026-10-01. Forces Karpenter 1.15.x (compatibility matrix). Moved from 1.34 on 2026-10-31.
+  gateway_api_inference_extension_crds: "v1.6.2"   # InferencePool CRD only (inference.networking.k8s.io/v1), sha256 38bfba9c452ab54b1afd1f4df15e75b3238c788d8ab007d2f469e6f7ae16fc9f. GAIE v1.6.0 moved the EPP, its chart and InferenceObjective to llm-d.
+  llmd_router_version: "v1.0.0"        # oci://ghcr.io/llm-d/charts/llm-d-router-gateway (EPP per pool) + InferenceObjective CRDs (manifests.yaml sha256 bae0ae787ec97494ff21933882810fb49bdec88b2cf6fe14539ffeedd2ba21e3). Default scorers prefix 3, kv-cache 2, queue 2.
+  epp_image: "ghcr.io/llm-d/llm-d-router-endpoint-picker:v1.0.0"   # rendered by the llm-d-router-gateway chart v1.0.0
+  vllm_image: "public.ecr.aws/deep-learning-containers/vllm:0.24.0-gpu-py312-cu130-ubuntu22.04-ec2-v1.3-soci"  # newest 0.24.0 ec2 build is SOCI-only; needs SOCI snapshotter for lazy pull, else pulls eagerly
+  # MOVED TO THE 2.28 LINE 2026-09-21, together with manifests/02-serving/vllm-neuron.yaml.
+  #
+  # CORRECTION, recorded because the first version of this comment asserted it: INV15 does NOT
+  # check this pin. Its regex covers only this project's own async-worker image
+  # (<acct>.dkr.ecr.<region>.amazonaws.com/inference-async-worker:<tag>). NO GATE COMPARES THE
+  # NEURON IMAGE PINS. Keeping this key and the manifest in step is therefore a DISCIPLINE, not
+  # an enforced invariant, and a future drift here would be silent. Recorded as a gap rather
+  # than fixed by inventing an invariant mid-refresh (spec-002 non-scope item 3).
+  #
+  # NxD Inference dropped Trn1/Inf2 at Neuron 2.29.0 and is now in maintenance mode; see
+  # qwen3_refresh.neuron_pin_cost for what the pin costs and its reactivation condition.
+  # DELIBERATELY NOT CHANGED, and both are historical records rather than drift:
+  #   spike_b_neuron.dlc_image (sdk2.31.0)         the image Spike B actually ran on
+  #   spikes/publication/vllm-neuron-8b.yaml       the image the publication runs used
+  vllm_neuron_dlc_image: "public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.13.0-neuronx-py312-sdk2.28.0-ubuntu24.04"  # real repo is neuron/pytorch-inference-vllm-neuronx. Ships the AWS Neuron fork of vLLM (SDK 2.28.0)
+  envoy_gateway_version: "v1.9.3"     # oci://docker.io/envoyproxy/gateway-helm --version v1.9.3 (Gateway API v1.6.1). Agent Router v1.2 needs >= v1.9.2. Upstream tests v1.9 on K8s 1.33-1.36.
+                                      # Moved 2026-08-03 with the rebuild; published 2026-07-22T18:59:16Z.
+  envoy_ai_gateway_version: "v1.2.0"  # Agent Router (formerly Envoy AI Gateway; repo theagentrouter/agent-router); charts keep the ai-gateway-crds-helm / ai-gateway-helm names. FailOpen still not honoured (#2502 open on 2026-10-31).
+  keda_version: "v2.21.0"             # KEDA + Helm chart both 2.21.0. Upstream tests v2.21 on K8s 1.34-1.36.
+  # AWS Load Balancer Controller. The Amazon EKS guide recommends >= 2.7.2 and states the in-tree
+  # cloud provider (which creates Classic Load Balancers) is "only receiving critical bug fixes".
+  # Chart 1.13.4 ships controller v2.13.4; the IAM policy is fetched at the matching tag.
+  aws_load_balancer_controller_chart: "3.6.2"   # chart == controller version since v3.0.0
+  nvidia_device_plugin: "0.19.3"      # nvdp/nvidia-device-plugin chart; >=0.19.0 defaults MOFED on, we set mofedEnabled=false
+  efa_device_plugin_chart: "v0.5.29"  # eks-charts aws-efa-k8s-device-plugin (appVersion v0.5.20)
+  neuron_device_plugin_sdk_tag: "v2.31.0"  # aws-neuron-sdk tag install-device-plugins.sh applies (was master, now pinned); deploys neuron-device-plugin:2.22.4.0. Advertises aws.amazon.com/neuron + neuroncore (neurondevice removed in 2.20).
+  prometheus_stack: "87.17.0"         # kube-prometheus-stack (operator v0.92.1). HELD at 87.17.0 through
+                                      # the rebuild and the measurement window: the cancellation and
+                                      # isolation work reads its metrics path. Newest observed 88.0.1.
+                                      # EXIT CONDITION (design v6.2.3 2.2.2): the hold lifts once BOTH the
+                                      # concurrency cancellation cell and the tier isolation test are recorded.
+  dcgm_exporter: "4.8.3"              # NVIDIA DCGM exporter Helm chart (GPU metrics, Phase 2.1)
+  neuron_monitor_image: "public.ecr.aws/neuron/neuron-monitor:1.13.1@sha256:b6ecd039749096bd5b3fe4fc20b8990b57148996251cad23efcdc92cdcd54d8a"  # inf2 metrics; inactive this pass (Neuron scaled to 0) and applied by no manifest. 1.13.1 is the highest version tag in the ECR Public registry, read 2026-11-07 via the registry tags API, pinned by index digest. Trivy 0.76.1 on 2026-11-07: 0 Critical, 0 High. Replaces 1.11.0 (1 Critical, 6 High: certifi, apt, OpenSSL, urllib3).
+  builder_awscli_image: "amazon/aws-cli:2.39.3@sha256:d557b3524475d70dd3104cf44d96568ee3188897b73a6ece2b37aa50e1af362f"  # ECR login init container of the in-cluster image build (infra/addons/buildkit-job.template.yaml). Pinned (was :latest): 2.39.3 carried the same digest as latest on Docker Hub, read 2026-10-31; index digest added 2026-11-07 (Docker Hub registry API). Trivy 0.76.1 on 2026-11-05: 0 Critical, 0 High. Not yet pulled in-cluster.
+  builder_busybox_image: "busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662"  # context-unpack init container of the in-cluster image build (infra/addons/buildkit-job.template.yaml). Index digest of the 1.36 tag, read 2026-11-07 (Docker Hub registry API). Trivy 0.76.1 on 2026-11-05: 0 Critical, 0 High.
+  worker_base_image: "public.ecr.aws/docker/library/python:3.12-slim@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30"  # async-worker/Dockerfile FROM and tests/validation/promotion-stub.yaml. ECR Public mirror of the Docker Official Image, same index digest as Docker Hub, read 2026-11-02. Trivy 0.76.1: 0 Critical, 45 High, none with a fix released. Re-read 2026-11-07 (Trivy 0.76.1): 0 Critical, 48 High, 2 of them with a fix released (CVE-2026-109518 in apt and libapt-pkg7.0, an on-path attack on apt downloads, so build time only: the worker never runs apt). The newest 3.12-slim index digest that day (4840d514c583) has 49 High and the same 2 unfixed, so it was NOT adopted. Later that day Trivy also reported CVE-2026-85091 and CVE-2026-76844 in zlib1g (fixed in 1:1.3.dfsg+really1.3.1-1+deb13u1), so async-worker/Dockerfile installs exactly zlib1g, apt and libapt-pkg7.0 at their fixed versions: the built worker image has 0 Critical, 47 High, 0 with a fix released. Bump: resolve the new index digest, rerun Trivy, update here and in both files.
+  safety_net_image: "alpine/k8s:1.37.2@sha256:dcb7185e112a453aa72f426754849a97357727ef8f40168fb208c8cf59952042"  # shell + kubectl v1.37.2 (matches EKS 1.37); cost safety-net CronJob (manifests/07-safety-net). Newest 1.37 tag on Docker Hub (released 2026-11-01), pinned by index digest, read 2026-11-07. Trivy 0.76.1 on 2026-11-07: 0 Critical, 131 High, all in bundled tools the job never runs (helm, kustomize, the Python of the AWS CLI); the job runs only sh, date, cat, sed, grep and kubectl. Replaces 1.37.1 (2 Critical: Go crypto/tls in kustomize, certifi).
+
+# Karpenter install version (satisfies hard_minimums.karpenter >=1.11). NOT a
+# choices field the manifests key on, but the version install-karpenter.sh pins.
+karpenter_install: "1.15.1"   # K8s 1.37 needs 1.15.x (Karpenter compatibility matrix). Released 2026-10-23.
+# The Karpenter getting-started CloudFormation template is a PINNED EXTERNAL DEPENDENCY, not just a
+# download. It is load-bearing: the merge guard's superset assertion compares the merged template
+# against it, so an unpinned input would silently weaken the strongest check in that path.
+karpenter_cfn_template:
+  url: "https://raw.githubusercontent.com/aws/karpenter-provider-aws/v1.15.1/website/content/en/preview/getting-started/getting-started-with-karpenter/cloudformation.yaml"
+  sha256: "8ee49d6de4f2397797aea5c961706c90491a291b6a961268000cb2daadbd958f"
+  bytes: 17453
+  fetched_on: "2026-10-31"
+  # Verified by install-karpenter.sh before every deploy. A mismatch is NOT auto-accepted: upstream
+  # changing a file at a PINNED TAG is a fact to investigate, not a checksum to bump.
+  # Coupled ruling: the merge guard's superset assertion. If this moves, re-run the guard's six
+  # injection proofs, because the assertion's inputs changed.
+
+# --- Load-test target model (Phase 1) ---
+# Design target is meta-llama/Llama-3.1-8B-Instruct (gated=manual, license approval
+# pending on the HF account). Load test uses the ungated same-weights mirror to avoid
+# the license wait; identical Llama-3.1-8B-Instruct weights.
+loadtest_model: "NousResearch/Meta-Llama-3.1-8B-Instruct"
+loadtest_model_revision: "d10aef7999a2b5ba950ab3974312feeedbfe0b77"
+
+# --- Spike B Neuron serving config (confirmed on the running pod 2026-07-23, Gate 1) ---
+# Recorded from the live pod: cache_config_info + launch args on the AWS Neuron fork.
+spike_b_neuron:
+  model: "TinyLlama/TinyLlama-1.1B-Chat-v1.0"   # ungated Llama-architecture, short AOT compile
+  dlc_image: "public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.16.0-neuronx-py312-sdk2.31.0-ubuntu24.04"
+  instance_type: "inf2.24xlarge"                # SPIKE-B pin: one 6-Neuron-device node hosts 2 replicas for the Phase 3 routing test (test-only nodeSelector, restored at teardown)
+  tensor_parallel_size: 2                        # 2 NeuronCores = 1 Neuron device
+  max_model_len: 2048
+  max_num_seqs: 4
+  # Prefix-caching-OFF (contiguous) baseline, confirmed from vllm:cache_config_info:
+  #   enable_prefix_caching=False, block_size=2048 (= max_model_len), num_gpu_blocks=5,
+  #   num_gpu_blocks_override=5, _neuron_null_block_adjusted=True (plugin adjusted 4 -> 5,
+  #   one null block). Phase 2 toggles enable_prefix_caching to study the KV-metric semantics.
+  metric_names_confirmed:                        # present on the fork under UPSTREAM names (Phase 1.4)
+    - vllm:kv_cache_usage_perc
+    - vllm:num_preemptions_total
+    - vllm:num_requests_running
+    - vllm:num_requests_waiting
+    - vllm:prefix_cache_hits_total
+    - vllm:prefix_cache_queries_total
+  verified_on: "2026-07-23"
+
+# --- spec-002 Qwen3 refresh (ruling 2026-09-20, section 4.1) ---
+# REVISIONS ARE PINNED AS HASHES, NOT NAMES. A tag that moves silently reproduces nothing, and the
+# model-facts registry already records `revision_pinned_in_manifest: false` as a known gap for both
+# incumbent models. The serving manifests close that gap in the same change that adopts these pins.
+# Read from the Hugging Face model API 2026-09-20.
+qwen3_refresh:
+  economy:
+    model: "Qwen/Qwen3-1.7B"
+    revision: "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+    # CORRECTED 2026-09-24. This read "AWS Inferentia2 (inf2)" until today, which was true when
+    # pre-check A passed (compile and serve succeeded, 2026-09-20) and FALSE from 2026-09-23, when
+    # experiment 2 stage 1 found period-4 multi-slot degeneracy with SILENT corruption on the
+    # legacy Neuron line and the standing L4 branch fired. The manifests moved that day; this field
+    # did not. The model did not change, only the hardware: single-variable, as the branch required.
+    hardware: "NVIDIA L4 (g6)"
+    hardware_history: >-
+      Inferentia2 until 2026-09-23. Moved to L4 by the pre-ruled FAIL branch of spec-002 section 5
+      after spikes/experiment-2-neuron-stage1-2026-09-23/RESULT.md. The Neuron arm closes as
+      characterization, carrying two findings (KV-metric semantics, period-4 silent corruption).
+      Measured consequence: the Neuron path offered 4 sequence slots and was usable at 1, where L4
+      measured 149,376 tokens of KV and 72.94x concurrency at the class contract of 2,048 tokens.
+    verified_on: "2026-09-24"
+  standard:
+    model: "Qwen/Qwen3-8B"
+    revision: "b968826d9c46dd6066d109eabc6255188de91218"
+    hardware: "NVIDIA L40S (g6e, interactive lane) and NVIDIA L4 (g6, batch lane)"
+  premium:
+    model: "Qwen/Qwen3-32B-AWQ"
+    revision: "0499c3ac83fdef8810b907a23894ba91e95eddd8"
+    hardware: "NVIDIA L40S (g6e) ONLY"
+    hardware_note: >-
+      L40S-only is forced by arithmetic, not preference: 19.33 GB of AWQ weights leave about 4,000
+      tokens of KV on a 24 GB L4, which cannot host a prefix-caching experiment. The
+      same-model-per-class rule then makes 32B unusable as the standard class.
+
+  # THE NEURON PIN, and its cost stated plainly rather than buried.
+  # NxD Inference dropped Trn1/Inf2 at Neuron 2.29.0 (2026-04-09) and AWS's instruction is to pin to
+  # 2.28 for Inf2. NxD Inference is now in maintenance mode with no new feature releases planned.
+  vllm_neuron_dlc_image_2_28: "public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.13.0-neuronx-py312-sdk2.28.0-ubuntu24.04"
+  neuron_pin_cost: >-
+    The 2.28 image carries vLLM 0.13.0 against 0.16.0 in the sdk2.31.0 image above, so this pin
+    freezes the Neuron-side vLLM THREE MINOR VERSIONS BACK, not only the SDK. Proven serviceable:
+    pre-check A compiled Qwen3-1.7B in 10.8 min with zero restarts and served HTTP 200 in 2.52 s.
+  neuron_pin_reactivation_condition: >-
+    Revisit when EITHER Trn2 becomes reachable in-region at a size this workload can use, OR AWS
+    resolves the contradiction between its What's New page ("NxD Inference no longer supports
+    Trn1/Inf2") and the versioned 2.29.0 release notes, which scope the same change narrowly to NKI
+    kernels. Recorded so the pin is revisited rather than inherited.
+
+  # THE GPU PIN DOES NOT MOVE. Qwen3 requires only vLLM >= 0.8.5 and choices.vllm_image is 0.24.0,
+  # so no engine change is needed. That is what keeps the promotion-and-cancellation result on the
+  # version it was actually measured on.
+  gpu_vllm_pin_unchanged: "0.24.0, see choices.vllm_image"
+
+  # MEASURED, not derived. Pre-check B, 2026-09-21, g6.xlarge on-demand.
+  measured_l4_kv_cache:
+    num_gpu_blocks: 1504
+    block_size: 16
+    tokens: 24064
+    note: >-
+      Pre-registered prediction was ~1,560 blocks / ~25,018 tokens, so the derivation was 3.8 percent
+      high. Every overflow ratio in the ramp experiment uses C = 24,064, NOT 25,000. The L40S figure
+      (~171,000) is still DERIVED and must be read from num_gpu_blocks during experiment 3.
+  verified_on: "2026-09-21"
+
+verified_on: "2026-08-03"     # RE-VERIFIED at the rebuild against upstream release APIs and the ECR
+                              # registry. Moved with the rebuild: Envoy Gateway v1.8.2 to v1.8.3, KEDA
+                              # v2.20.1 to v2.20.2. Held: vLLM DLC 0.24.0 (frozen through Phase 3, moving it
+                              # invalidates A15 and both halves of 12.1), kube-prometheus-stack 87.17.0.
+                              # Model + revision were verified against the HF API on 2026-07-21.
+verified_by: "version research vs GitHub Releases API, in-repo Chart.yaml/values.yaml at release tag, ECR Public registry tags, AWS EKS docs"
+
+# Discover current versions (do not guess):
+#   Gateway API Inference Extension releases:
+#     https://github.com/kubernetes-sigs/gateway-api-inference-extension/releases
+#   Karpenter releases: https://github.com/aws/karpenter-provider-aws/releases
+#   vLLM AWS DLC tags:  public.ecr.aws/deep-learning-containers  (vllm, vllm-inference-neuronx)

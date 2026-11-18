@@ -1,0 +1,101 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# vLLM economy Deployment and Service, on L4. Added 2026-09-23 (the maintainer's L4 branch ruling, 2c).
+#
+# THE HARDWARE CHANGES, THE CLASS DOES NOT. Same model (Qwen3-1.7B at the same pinned revision),
+# same committed shape (one replica, no ScaledObject), same 2,048-token class contract. The only
+# variable is the substrate, which is what makes the Neuron findings comparable to anything measured
+# here. Why it moved: spikes/experiment-2-neuron-stage1-2026-09-23/RESULT.md
+#
+# SERVED BY HF MODEL ID, like every other GPU tier. The tie_word_embeddings + model-id + shard-on-load
+# limitation is NxD-Inference-specific; it does not apply to the GPU DLC, and the local-checkpoint
+# variant was refuted as a fix for the Neuron defect anyway. One pattern for all GPU tiers.
+#
+# 2,048 IS NOW CONTRACT-BOUND, NOT COMPILE-BOUND, and the distinction is worth stating because it
+# silently changed. On Inferentia the ceiling was also what the compiled artifact allowed. On an L4
+# with a 1.7B model the hardware would allow far more; the limit stays because it is the class
+# contract and the bottom rung of the capability ladder (2,048 / 8,192 / 32,768), which the relay's
+# cheapest-class-that-fits loop reads. Revisiting it is a product decision gated on the experiment
+# series completing, not a config edit.
+#
+# ENGINE FLAGS MIRROR THE BATCH TIER, excepting model and --max-model-len. One source of truth: a
+# bespoke economy config would drift from the tier it is measured against.
+#
+# INVARIANT 1: labels app+tier must equal the economy InferencePool selector.
+# INVARIANT 5: the nvidia.com/gpu toleration must match the gpu-economy NodePool taint.
+# INVARIANT 20: the chat template mount and --chat-template must agree with the committed file.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama3-economy
+  namespace: inference
+  # spike-safety-net=managed FROM BIRTH. Applied by hand it is lost on the next fresh deploy, and
+  # the `vllm-` name prefix independently satisfies the net's discovery backstop, so BOTH of its
+  # mechanisms cover this object from the first apply. Pre-check A's first draft satisfied neither.
+  labels: { app: vllm-llama3, tier: economy, spike-safety-net: managed }
+spec:
+  replicas: 1
+  # Recreate, not RollingUpdate: a GPU pod's rollout surge would request a second L4 and drive
+  # Karpenter to provision a node for a pod that is about to be replaced. One pod at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: vllm-llama3, tier: economy }
+  template:
+    metadata:
+      labels: { app: vllm-llama3, tier: economy }
+    spec:
+      serviceAccountName: vllm
+      nodeSelector:
+        tier: economy        # the gpu-economy NodePool's label; family is bounded by that pool
+      tolerations:
+        - { key: nvidia.com/gpu, operator: Equal, value: "true", effect: NoSchedule }
+      containers:
+        - name: vllm
+          image: public.ecr.aws/deep-learning-containers/vllm:0.24.0-gpu-py312-cu130-ubuntu22.04-ec2-v1.3-soci   # versions.yaml choices.vllm_image
+          args:
+            # ECONOMY TIER, spec-002, on L4 as of 2026-09-23. Revision pinned: a moving tag
+            # reproduces nothing, and this is the SAME revision the Neuron tier served, so the
+            # substrate is the only variable between the two records.
+            - --model=Qwen/Qwen3-1.7B
+            - --revision=70d244cc86ccca08cf5af4e1e306ecf908b1ad5e
+            - --enable-prefix-caching
+            - --max-model-len=2048          # the CLASS CONTRACT (see above), not a hardware bound
+            - --gpu-memory-utilization=0.9
+            # THINKING FORCED OFF, server-side (spec-002 4.2; ruling 2026-09-22). One committed template for
+            # the whole Qwen3 family on every tier, so mode cannot drift per tier. INV20 holds this path
+            # and the ConfigMap bytes in agreement.
+            - --chat-template=/etc/vllm/chat-templates/qwen3-nonthinking.jinja
+            - --port=8000
+          env:
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: hf-token, key: token, optional: true }   # Qwen3 is Apache 2.0, ungated
+          volumeMounts:
+            - { name: chat-template, mountPath: /etc/vllm/chat-templates, readOnly: true }
+          ports:
+            - { name: http, containerPort: 8000 }
+          resources:
+            limits: { nvidia.com/gpu: 1 }
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            # 60 x 10s = 10 min, the standard-tier allowance. A 1.7B checkpoint is ~3.4 GB, far
+            # smaller than premium's 19.33 GB, so the generous premium window is not needed here.
+            failureThreshold: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+      volumes:
+        - name: chat-template
+          configMap: { name: chat-template-qwen3-nonthinking }   # manifests/02-serving/chat-template-qwen3-nonthinking.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama3-economy
+  namespace: inference
+spec:
+  selector: { app: vllm-llama3, tier: economy }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }

@@ -1,0 +1,94 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# vLLM interactive Deployment and Service.
+# INVARIANT 1: labels app+tier must equal the interactive InferencePool selector.
+# INVARIANT 5: the nvidia.com/gpu toleration must match the interactive NodePool taint.
+# --enable-prefix-caching is REQUIRED for the prefix scorer to have anything to score.
+# The startup probe is load-bearing: vLLM takes minutes to load weights; without a
+# long startup probe Kubernetes kills the pod before it is ready.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama3-interactive
+  namespace: inference
+  # spike-safety-net=managed is the selector the cost safety net scales to zero on expiry
+  # (manifests/07-safety-net/safety-net.yaml). It must live in the manifest: applied by hand
+  # it is lost on the next fresh deploy, leaving the primary path with nothing to select.
+  labels: { app: vllm-llama3, tier: interactive, spike-safety-net: managed }
+spec:
+  # READER SIZE: 1. Reduced from 4 on 2026-08-07.
+  #
+  # WHY. A first stage that requires four GPU instances before a reader reaches the first test is a
+  # reader-experience defect independent of anyone's verification bill: it turns "try this" into a
+  # quota conversation. One replica proves the routing path end to end, which is what stage 1
+  # claims.
+  #
+  # WHAT FOUR WAS FOR, and it is NOT deletable knowledge: the published cache-routing measurements
+  # used FOUR interactive replicas across four nodes, because the Endpoint Picker scores ACROSS a
+  # fleet and a single replica has nothing to co-locate against. Reproducing those numbers needs
+  # the fleet back. Reproducing the ARCHITECTURE does not.
+  #
+  #   make loadtest-* and the publication runs : scale to 4 first
+  #   make stage-1 and the walkthrough         : 1 is correct and sufficient
+  replicas: 1
+  selector:
+    matchLabels: { app: vllm-llama3, tier: interactive }
+  template:
+    metadata:
+      labels: { app: vllm-llama3, tier: interactive }
+    spec:
+      serviceAccountName: vllm
+      nodeSelector:
+        karpenter.k8s.aws/instance-family: g6e   # invariant: matches interactive NodePool
+        tier: interactive
+      tolerations:
+        - { key: nvidia.com/gpu, operator: Equal, value: "true", effect: NoSchedule }
+      containers:
+        - name: vllm
+          image: public.ecr.aws/deep-learning-containers/vllm:0.24.0-gpu-py312-cu130-ubuntu22.04-ec2-v1.3-soci   # versions.yaml choices.vllm_image
+          args:
+            # STANDARD TIER, spec-002. Qwen3-8B, revision pinned: a moving tag reproduces nothing.
+            - --model=Qwen/Qwen3-8B
+            - --revision=b968826d9c46dd6066d109eabc6255188de91218
+            - --enable-prefix-caching
+            # Qwen3-8B's native context is 40,960, NOT Llama-3.1's 131,072. 8192 is held from the
+            # previous config so the cache reading stays comparable: one variable changes, the model.
+            - --max-model-len=8192
+            - --gpu-memory-utilization=0.9
+            # THINKING FORCED OFF, server-side (spec-002 4.2; ruling 2026-09-22). One committed template for
+            # the whole Qwen3 family on every tier, so mode cannot drift per tier. INV20 holds this path
+            # and the ConfigMap bytes in agreement.
+            - --chat-template=/etc/vllm/chat-templates/qwen3-nonthinking.jinja
+            - --port=8000
+          env:
+            # From the hf-token secret (never hardcoded). Ignored by the ungated mirror;
+            # ready for the official gated meta-llama repo once its license is approved.
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef: { name: hf-token, key: token, optional: true }
+          volumeMounts:
+            - { name: chat-template, mountPath: /etc/vllm/chat-templates, readOnly: true }
+          ports:
+            - { name: http, containerPort: 8000 }
+          resources:
+            limits: { nvidia.com/gpu: 1 }
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            failureThreshold: 60
+            periodSeconds: 10        # allows up to 10 minutes to load weights
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            periodSeconds: 5
+      volumes:
+        - name: chat-template
+          configMap: { name: chat-template-qwen3-nonthinking }   # manifests/02-serving/chat-template-qwen3-nonthinking.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama3-interactive
+  namespace: inference
+spec:
+  selector: { app: vllm-llama3, tier: interactive }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }

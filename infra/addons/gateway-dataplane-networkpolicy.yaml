@@ -1,0 +1,23 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# OPTIONAL INGRESS ISOLATION for the Envoy Gateway data plane, companion to
+# manifests/09-network-policy/inference-network-policies.yaml and applied with it by
+# `make network-policies`. Only the inference namespace (relay and worker) and Prometheus may reach
+# the data plane, so a pod elsewhere in the cluster cannot reach the interactive default rule
+# unclassified. It lives here rather than under manifests/ because INVARIANT 8 keeps manifests/ in
+# the inference namespace. NOT VALIDATED ON A CLUSTER YET (2026-10-31).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: inference-gateway-ingress
+  namespace: envoy-gateway-system
+spec:
+  podSelector:
+    matchLabels: { gateway.envoyproxy.io/owning-gateway-name: inference-gateway }
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: inference }
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }

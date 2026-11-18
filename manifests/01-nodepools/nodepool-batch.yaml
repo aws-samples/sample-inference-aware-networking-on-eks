@@ -1,0 +1,62 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# NodePool, batch tier, Spot. Same EC2NodeClass, batch label, Spot capacity.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: gpu-batch
+spec:
+  template:
+    metadata:
+      labels:
+        tier: batch
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: gpu
+      taints:
+        - key: nvidia.com/gpu
+          value: "true"
+          effect: NoSchedule
+      requirements:
+        # Diversify Spot families (design 8.1: a narrow Spot NodePool cannot get
+        # capacity). g6e=L40S, g6/g5=A10G(24G), all fit Qw2.5-7B.
+        - key: karpenter.k8s.aws/instance-family
+          operator: In
+          values: ["g6e", "g6", "g5"]
+        # SIZE IS BOUNDED, 2026-09-22, and the gap was a class across all three GPU pools. Each pod
+        # requests only nvidia.com/gpu: 1, and the pool constrained family and capacity type but never
+        # size, so nothing stopped Karpenter taking a larger host for the same single GPU. It did: the
+        # premium bring-up of 2026-09-22 launched g6e.4xlarge (3.00424 USD/hr, AWS Pricing API) where
+        # g6e.xlarge (1.861) carries the identical one L40S. WHY, VERIFIED THE SAME DAY: capacity, not
+        # preference. Karpenter's candidate list that morning lacked g6e.xlarge, and the afternoon
+        # attempt logged seven InsufficientInstanceCapacity failures for xlarge and 2xlarge across
+        # us-west-2a/b/c in 25 minutes before an xlarge launched in 2b. AWS named us-west-2d as having
+        # capacity every time, and this VPC has NO 2d subnet. So the bound trades availability for price:
+        # it can hold a pod Pending during an xlarge/2xlarge shortage that 4xlarge would have ridden out.
+        # That trade is recorded, not hidden (spikes/premium-bringup-2026-09-22/RESULT.md).
+        # ENUMERATED AND DELIBERATELY NOT APPLIED to the Neuron pool: trn2 exists only as 48xlarge, so
+        # a size bound there would silently remove trn2 from the design, which is a design decision.
+        # AMENDED 2026-09-24, the maintainer's ruling: WIDENED to 4xlarge and 12xlarge so experiments 3 and 4
+        # can close. The 2026-09-22 bound traded availability for price and the trade came due: the
+        # L40S fleet for experiment 3 could not be acquired at xlarge/2xlarge at all. Ruling: "widen
+        # to 4xlarge and 12xlarge, explore due to availability, we must close those tests." The price
+        # exposure is accepted and stated rather than hidden: g6e.4xlarge is 3.00424 USD/hr and
+        # g6e.12xlarge 10.4926 against g6e.xlarge at 1.861, all carrying at least the one L40S a
+        # replica needs (12xlarge carries four, which hosts four replicas on one node and one
+        # acquisition event). The engagement ceiling moved 200 -> 500 USD in the same ruling.
+        - key: karpenter.k8s.aws/instance-size
+          operator: In
+          values: ["xlarge", "2xlarge", "4xlarge", "12xlarge"]
+        # Design intent is Spot-only for batch (blast radius). In this account/region
+        # Spot GPU offerings for g5/g6/g6e were unavailable in the cluster AZs, so
+        # on-demand is added as a fallback. Karpenter prefers Spot when available.
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+  limits:
+    nvidia.com/gpu: "32"
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 60s

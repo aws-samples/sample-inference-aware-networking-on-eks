@@ -1,0 +1,25 @@
+=== apply the round-robin route and Service (idempotent; required for the rr arm) ===
+service/vllm-llama3-batch-rr unchanged
+httproute.gateway.networking.k8s.io/lt8-batch-rr-route configured
+=== escalation gate 0: MODEL_ID must equal what the batch Deployment actually serves ===
+  MODEL_ID=Qwen/Qwen3-8B agrees with the served model
+=== escalation gate: re-derive C on the pinned instance, assert == 24064 ===
+  num_gpu_blocks=1504  C=24064 tokens
+=== verify L live per rho (tokenize the ACTUAL salted prefix), record measured rho ===
+  rho_target=0.8 reps=53 L_actual=1499 rho_actual=0.8098
+  rho_target=1.0 reps=66 L_actual=1863 rho_actual=1.0064
+  rho_target=1.2 reps=79 L_actual=2227 rho_actual=1.2031
+  rho_target=1.6 reps=106 L_actual=2983 rho_actual=1.6115
+deployment "vllm-llama3-batch" successfully rolled out
+>> gateway: http://envoy-inference-inference-gateway-2e466d4a.envoy-gateway-system.svc.cluster.local
+=== PREFLIGHT GATE: the rr arm must be cache-blind (spread), not the Endpoint Picker ===
+LT8 {"cell": "PF", "arm": "rr", "mode": "grouped", "prefix_cache_hit_rate": 0.6593, "effective_R": 12.0, "requests_ok": 48, "max_concentration_fraction": 0.312, "e2e_latency_p50_s": 2.601, "e2e_latency_p90_s": 2.638, "integrity": "ok"}
+  preflight rr: hit=0.6593 maxconc=0.312 (want hit<0.8 and maxconc<0.5)
+  PREFLIGHT PASS: the rr arm reaches the cache-blind Service
+=== PRIMARY: interleaved cliff (B EPP, D RR) ===
+>> LT-11 B (epp/interleaved) rho=0.9 reps=59 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho0.9_r1.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.1876, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 6.013, "e2e_latency_p90_s": 6.895, "integrity": "ok"}
+>> LT-11 B (epp/interleaved) rho=0.9 reps=59 rep=2 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_B_rho0.9_r2.json
+LT8 {"cell": "B", "arm": "epp", "mode": "interleaved", "prefix_cache_hit_rate": 0.2042, "effective_R": 12.0, "requests_ok": 624, "max_concentration_fraction": 0.255, "e2e_latency_p50_s": 5.995, "e2e_latency_p90_s": 7.339, "integrity": "ok"}
+>> LT-11 D (rr/interleaved) rho=0.9 reps=59 rep=1 -> loadtest/results/spec002-ramp/dense-2026-09-25/cell_D_rho0.9_r1.json
+>> run ended; KEDA pin paused-replicas=4 DELIBERATELY LEFT IN PLACE (no-release order)

@@ -1,0 +1,148 @@
+digraph inference_aware_eks {
+  rankdir=TB;
+  compound=true;
+  splines=spline;
+  nodesep=0.35;
+  ranksep=0.6;
+  bgcolor="white";
+  fontname="Helvetica";
+  labelloc="t";
+  fontsize=22;
+  label="Inference-Aware Networking on Amazon EKS  -  Reference Architecture";
+  node [fontname="Helvetica", fontsize=11, style="filled,rounded", shape=box, color="#37474f", penwidth=1.2];
+  edge [fontname="Helvetica", fontsize=9, color="#546e7a"];
+
+  client [label="Clients\n(sync HTTP/SSE  &  async submit)", shape=box, style="filled,rounded", fillcolor="#eceff1"];
+
+  /* ---------------- Layer 1: entry + inference-aware routing ---------------- */
+  subgraph cluster_l1 {
+    label="Layer 1  -  Entry point & inference-aware routing";
+    style="filled,rounded"; fillcolor="#e3f2fd"; color="#1565c0"; fontsize=14; fontcolor="#0d47a1";
+    alb   [label="AWS ALB / NLB\n(edge TLS, WAF, ACM)", fillcolor="#bbdefb"];
+    envoy [label="Envoy Gateway\n(Gateway API data plane)", fillcolor="#bbdefb"];
+    aigw  [label="Envoy AI Gateway\nextension server\n(registers InferencePool\nas a routable backend)", fillcolor="#90caf9"];
+    route [label="HTTPRoute  /v1\n(+ x-gateway-inference-objective: batch)", fillcolor="#bbdefb"];
+    obj   [label="InferenceObjective\ninteractive=0 / batch=2\n(priority / SLA tier)", fillcolor="#e1f5fe"];
+
+    subgraph cluster_epp_i {
+      label="interactive pool (FailClose)"; style="filled,rounded"; fillcolor="#e1f5fe"; color="#1976d2"; fontsize=10;
+      pool_i [label="InferencePool\nvllm-llama3-interactive", fillcolor="#bbdefb"];
+      epp_i  [label="Endpoint Picker (EPP)\nscorers: queue 2.0,\nkv-cache 2.0, prefix 3.0\n+ max-score-picker", fillcolor="#64b5f6"];
+    }
+    subgraph cluster_epp_b {
+      label="batch pool (FailOpen)"; style="filled,rounded"; fillcolor="#e1f5fe"; color="#1976d2"; fontsize=10;
+      pool_b [label="InferencePool\nvllm-llama3-batch", fillcolor="#bbdefb"];
+      epp_b  [label="Endpoint Picker (EPP)\nsame scoring profile", fillcolor="#64b5f6"];
+    }
+  }
+
+  /* ---------------- Layer 2: async front door ---------------- */
+  subgraph cluster_l2 {
+    label="Layer 2  -  Async front door (the AWS contribution)";
+    style="filled,rounded"; fillcolor="#f1f8e9"; color="#558b2f"; fontsize=14; fontcolor="#33691e";
+    submit [label="Submit API\n(deterministic job_id\n= client_id#sha256(payload))", fillcolor="#dcedc8"];
+    sqs    [label="Amazon SQS\n(durable queue)", shape=cylinder, fillcolor="#c5e1a5"];
+    dlq    [label="SQS DLQ\n(maxReceiveCount 5)", shape=cylinder, fillcolor="#e6ee9c"];
+    ddb    [label="DynamoDB\ninference-jobs\n(conditional-claim\nidempotency + lease)", shape=cylinder, fillcolor="#c5e1a5"];
+    worker [label="Async worker\nconditional UpdateItem claim\n-> exactly one GPU job", fillcolor="#dcedc8"];
+  }
+
+  /* ---------------- Layer 3: serving ---------------- */
+  subgraph cluster_l3 {
+    label="Layer 3  -  Inference engine (vLLM)";
+    style="filled,rounded"; fillcolor="#fff3e0"; color="#ef6c00"; fontsize=14; fontcolor="#e65100";
+    vllm_i [label="vLLM interactive\nQwen2.5-7B  (L40S / g6e)\nprefix caching on", fillcolor="#ffe0b2"];
+    vllm_b [label="vLLM batch\nQwen2.5-7B  (Spot g6e/g6/g5)", fillcolor="#ffe0b2"];
+    vllm_n [label="vLLM Neuron (fork)\nTinyLlama  (inf2 / Inferentia2)\ncontiguous KV (section 8.4)", fillcolor="#ffcc80"];
+  }
+
+  /* ---------------- Layer 4: provisioning ---------------- */
+  subgraph cluster_l4 {
+    label="Layer 4  -  Node provisioning (Karpenter)";
+    style="filled,rounded"; fillcolor="#f3e5f5"; color="#6a1b9a"; fontsize=14; fontcolor="#4a148c";
+    karp  [label="Karpenter", fillcolor="#e1bee7"];
+    np_i  [label="NodePool interactive\nOn-Demand g6e", fillcolor="#e1bee7"];
+    np_b  [label="NodePool batch\nSpot g6e/g6/g5 + on-demand", fillcolor="#e1bee7"];
+    np_n  [label="NodePool neuron\ninf2 (AL2023 Neuron AMI)", fillcolor="#e1bee7"];
+    dp    [label="Device plugins\nNVIDIA + Neuron", fillcolor="#f3e5f5"];
+  }
+
+  /* ---------------- Observability ---------------- */
+  subgraph cluster_obs {
+    label="Observability & autoscaling";
+    style="filled,rounded"; fillcolor="#eceff1"; color="#455a64"; fontsize=13; fontcolor="#263238";
+    prom  [label="Prometheus\n(+ vLLM PodMonitor,\ntier label)", fillcolor="#cfd8dc"];
+    keda  [label="KEDA\ninteractive/batch: queue depth\nworker: SQS depth", fillcolor="#cfd8dc"];
+    graf  [label="Grafana\nseven KPIs", fillcolor="#eceff1"];
+  }
+
+  /* ---------------- Platform ---------------- */
+  subgraph cluster_plat {
+    label="Platform"; style="filled,rounded"; fillcolor="#fbe9e7"; color="#bf360c"; fontsize=12;
+    eks  [label="Amazon EKS 1.34\n(Pod Identity for IAM)", fillcolor="#ffccbc"];
+    ecr  [label="Amazon ECR\n(worker image)", shape=cylinder, fillcolor="#ffccbc"];
+  }
+
+  /* ================= SYNC request flow (blue) ================= */
+  edge [color="#1565c0", penwidth=2.2, fontcolor="#0d47a1"];
+  client -> alb [label="1  sync /v1"];
+  alb -> envoy -> route [label="2"];
+  route -> pool_i [label="3  default /v1"];
+  route -> pool_b [label="3  header=batch"];
+  pool_i -> vllm_i [label="5  to chosen pod", lhead=cluster_l3];
+  pool_b -> vllm_b [label="5"];
+
+  /* EPP ext_proc callout (the inference-aware step) */
+  edge [color="#00838f", penwidth=1.8, style=dashed, fontcolor="#006064"];
+  pool_i -> epp_i [label="4  ext_proc: pick endpoint"];
+  pool_b -> epp_b [label="4  ext_proc"];
+  envoy -> aigw [label="InferencePool backend", style=dashed];
+
+  /* ================= ASYNC flow (green) ================= */
+  edge [color="#2e7d32", penwidth=2.2, style=solid, fontcolor="#1b5e20"];
+  client -> submit [label="A  async submit"];
+  submit -> sqs [label="B  enqueue"];
+  sqs -> worker [label="C  receive"];
+  worker -> ddb [label="D  conditional claim"];
+  worker -> vllm_i [label="E  invoke (idle tier)"];
+  sqs -> dlq [label="poison", style=dashed, penwidth=1.4];
+
+  /* ================= METRICS / scoring (gray dashed) ================= */
+  edge [color="#607d8b", penwidth=1.3, style=dotted, fontcolor="#455a64"];
+  epp_i -> vllm_i [label="scrape :8000/metrics", constraint=false];
+  epp_b -> vllm_b [constraint=false];
+  vllm_i -> prom [label="metrics", constraint=false];
+  vllm_b -> prom [constraint=false];
+  vllm_n -> prom [constraint=false];
+  prom -> keda [constraint=false];
+  sqs  -> keda [label="queue depth", constraint=false, color="#2e7d32"];
+  keda -> vllm_i [label="scale", constraint=false];
+  keda -> vllm_b [constraint=false];
+  keda -> worker [constraint=false];
+  prom -> graf [constraint=false];
+
+  /* ================= PROVISIONING (orange dashed) ================= */
+  edge [color="#e65100", penwidth=1.5, style=dashed, fontcolor="#bf360c"];
+  karp -> np_i -> vllm_i [lhead=cluster_l3];
+  karp -> np_b -> vllm_b;
+  karp -> np_n -> vllm_n;
+  dp -> vllm_n [label="neuron device", constraint=false];
+
+  /* platform associations */
+  edge [color="#8d6e63", penwidth=1.0, style=dotted, arrowhead=none, fontcolor="#5d4037"];
+  worker -> ecr [constraint=false];
+  worker -> eks [label="Pod Identity", constraint=false];
+
+  /* legend */
+  subgraph cluster_legend {
+    label="Legend"; fontsize=12; style="filled,rounded"; fillcolor="#ffffff"; color="#90a4ae";
+    lz [shape=plaintext, fillcolor="#ffffff", label=<
+      <table border="0" cellborder="0" cellspacing="2">
+        <tr><td><font color="#1565c0"><b>&#8594; sync request flow</b></font></td></tr>
+        <tr><td><font color="#00838f"><b>&#8594; EPP ext_proc (inference-aware pick)</b></font></td></tr>
+        <tr><td><font color="#2e7d32"><b>&#8594; async flow (idempotent)</b></font></td></tr>
+        <tr><td><font color="#607d8b"><b>&#8594; metrics / scoring / scale</b></font></td></tr>
+        <tr><td><font color="#e65100"><b>&#8594; provisioning</b></font></td></tr>
+      </table>>];
+  }
+}

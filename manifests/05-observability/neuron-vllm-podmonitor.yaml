@@ -1,0 +1,18 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Scrape the Neuron vLLM replicas (app=vllm-neuron) so the Spike B dashboard renders live during a
+# Neuron run. The interactive/batch vLLM PodMonitor selects app=vllm-llama3 and does not cover the
+# Neuron pods (app=vllm-neuron), so this is a separate monitor. INVARIANT 8: namespace inference.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: vllm-neuron
+  namespace: inference
+spec:
+  selector:
+    matchLabels:
+      app: vllm-neuron
+  podMetricsEndpoints:
+    - port: http           # containerPort 8000, vLLM /metrics
+      path: /metrics
+      interval: 15s

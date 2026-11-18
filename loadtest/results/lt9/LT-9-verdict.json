@@ -1,0 +1,18 @@
+{
+  "K": 40,
+  "statuses": {
+    "complete": 40
+  },
+  "zero_loss": true,
+  "no_job_failed": true,
+  "dlq_at_outage_end": 0,
+  "dlq_now": 0,
+  "zero_dlq": true,
+  "claim_count_sum": 84,
+  "infra_rejections_sum": 44,
+  "real_gpu_runs": 40,
+  "exactly_once": true,
+  "outage_seconds": 900,
+  "time_to_drain_s": 922,
+  "horizon_note": "no DLQ within the outage: horizon > 900s"
+}

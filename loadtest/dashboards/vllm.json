@@ -1,0 +1,245 @@
+{
+  "uid": "inference-vllm",
+  "title": "Inference-Aware EKS: vLLM serving",
+  "tags": [
+    "inference",
+    "vllm"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 39,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "10s",
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests running by tier",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "max": null,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (tier) (vllm:num_requests_running)",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Requests waiting (queue) by tier",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "max": null,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (tier) (vllm:num_requests_waiting)",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "TTFT p95 by tier (s)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "max": null,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le,tier) (rate(vllm:time_to_first_token_seconds_bucket[2m])))",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Generation tokens/sec by tier",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "max": null,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (tier) (rate(vllm:generation_tokens_total[1m]))",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Prefix-cache hit rate by tier",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "clamp_max(sum by (tier) (rate(vllm:prefix_cache_hits_total[2m])) / clamp_min(sum by (tier) (rate(vllm:prefix_cache_queries_total[2m])), 1), 1)",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Completed requests/sec by tier",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "max": null,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (tier) (rate(vllm:e2e_request_latency_seconds_count[1m]))",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    }
+  ]
+}

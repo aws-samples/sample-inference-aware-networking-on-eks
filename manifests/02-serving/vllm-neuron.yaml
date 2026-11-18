@@ -1,0 +1,119 @@
+# DRY-RUN-EXEMPT: reference shape, no longer applied (the maintainer's L4 branch ruling 2g, 2026-09-23).
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+#
+# KEPT, NOT DELETED, BECAUSE IT PRODUCED TWO FINDINGS. Economy moved to L4 after experiment 2 stage 1
+# diagnosed multi-slot degeneracy on the legacy Neuron plugin line: a PERIOD-4 slot signature with
+# SILENT corruption (200 OK, well-formed response), at --max-num-seqs 4 only requests 1 and 5 of 8
+# legible, and 8/8 byte-identical at --max-num-seqs 1. Both candidate fixes were refuted by
+# measurement. spikes/experiment-2-neuron-stage1-2026-09-23/RESULT.md
+#
+# Its sibling finding is the KV-metric semantics result (on this path vllm:kv_cache_usage_perc counts
+# occupied sequence slots, not memory pressure), which the EPP scores on. Together they are the
+# Neuron arm's published characterization. This file is the exact configuration both were measured
+# against, so deleting it would delete the provenance of two results.
+#
+# Node-shaped invariants still read it (INV5 taints and tolerations); pool-shaped ones never did,
+# because the tier has no InferencePool.
+# vLLM Neuron variant. THREE things change from the NVIDIA Deployment, plus TRAPS.
+# 1. Image: the AWS Neuron DLC pytorch-inference-vllm-neuronx (ships the AWS Neuron
+#    FORK of vLLM, not upstream). Choosing the DLC is choosing the fork, which is also
+#    the only path to multi-node and multi-modal Neuron. NOTE: the repo is
+#    public.ecr.aws/neuron/pytorch-inference-vllm-neuronx, NOT a vllm-inference-neuronx
+#    repo under deep-learning-containers (that path does not exist).
+# 2. Resource: aws.amazon.com/neuron: 1 (the canonical name, matches the taint;
+#    the old name aws.amazon.com/neurondevice was renamed to neuron and removed in Neuron 2.20).
+# 3. Args: --device neuron with tensor-parallel size matching the NeuronCore count.
+#
+# TRAP (see DESIGN.md "Neuron traps"): with prefix caching OFF, vllm:kv_cache_usage_perc
+# means occupied sequence slots, not memory pressure, and vllm:num_preemptions_total
+# is disabled (reads zero). Confirm the fork's actual metric names before trusting any
+# KEDA query or alarm on this pool. LoRA is static (startup only) on Neuron.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-llama3-neuron
+  namespace: inference
+  # own app+tier: NOT selected by the batch pool. spike-safety-net: see vllm-interactive.yaml.
+  labels: { app: vllm-neuron, tier: neuron, spike-safety-net: managed }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }   # one Neuron device at a time (see batch rationale)
+  selector:
+    matchLabels: { app: vllm-neuron, tier: neuron }
+  template:
+    metadata:
+      labels: { app: vllm-neuron, tier: neuron }
+    spec:
+      serviceAccountName: vllm
+      nodeSelector:
+        karpenter.k8s.aws/instance-family: inf2
+        tier: neuron
+      tolerations:
+        - { key: aws.amazon.com/neuron, operator: Equal, value: "true", effect: NoSchedule }
+      containers:
+        - name: vllm
+          # PINNED TO THE 2.28 LINE, and the pin costs more than it looks. NxD Inference dropped
+          # Trn1/Inf2 at Neuron 2.29.0 (2026-04-09) and AWS's instruction is to pin to 2.28 for
+          # Inf2; NxD Inference is now in maintenance mode with no new feature releases planned.
+          # This image carries vLLM 0.13.0 against 0.16.0 in the sdk2.31.0 image, so the pin
+          # freezes the Neuron-side vLLM THREE MINOR VERSIONS BACK, not only the SDK.
+          # Reactivation condition in versions.yaml qwen3_refresh.neuron_pin_reactivation_condition.
+          # PROVEN SERVICEABLE: pre-check A compiled Qwen3-1.7B here in 10.8 min, zero restarts,
+          # and served HTTP 200 in 2.52 s. See spikes/precheck-a-neuron-qwen3/RESULT.md.
+          image: public.ecr.aws/neuron/pytorch-inference-vllm-neuronx:0.13.0-neuronx-py312-sdk2.28.0-ubuntu24.04   # versions.yaml qwen3_refresh.vllm_neuron_dlc_image_2_28
+          # The Neuron DLC entrypoint (vllm_entrypoint.py) execs argv[1:] as a full
+          # command, so args must start with `vllm serve`, not bare flags.
+          # ECONOMY TIER, spec-002. Qwen3-1.7B: dense, text-only, Apache 2.0, ungated, and in the
+          # NxD Inference production-ready list. REVISION PINNED, closing the gap the model-facts
+          # registry recorded for both incumbent models (a moving tag reproduces nothing).
+          args:
+            - vllm
+            - serve
+            - Qwen/Qwen3-1.7B
+            - --revision
+            - "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e"
+            # No --device flag: the neuron platform plugin (vllm_neuron:register)
+            # auto-activates on inf2, and --device was removed in this vLLM version.
+            - --tensor-parallel-size
+            - "2"                          # 2 NeuronCores per inf2 chip
+            - --max-model-len
+            - "2048"
+            - --max-num-seqs
+            - "4"
+            # Section 8.4 contiguous path: prefix caching OFF, and
+            # num_gpu_blocks_override MUST equal max_num_seqs (else out-of-bounds).
+            # (Spike B toggles prefix caching ON to study the KV-metric semantics.)
+            - --no-enable-prefix-caching
+            - --num-gpu-blocks-override
+            - "4"
+            # THINKING FORCED OFF, server-side (spec-002 4.2; ruling 2026-09-22). One committed template for
+            # the whole Qwen3 family on every tier, so mode cannot drift per tier. INV20 holds this path
+            # and the ConfigMap bytes in agreement.
+            - --chat-template
+            - "/etc/vllm/chat-templates/qwen3-nonthinking.jinja"
+            - --port
+            - "8000"
+          volumeMounts:
+            - { name: chat-template, mountPath: /etc/vllm/chat-templates, readOnly: true }
+          ports:
+            - { name: http, containerPort: 8000 }
+          resources:
+            limits: { aws.amazon.com/neuron: 1 }   # 1 Neuron device (verify vs device-plugin resource name)
+          startupProbe:
+            httpGet: { path: /health, port: 8000 }
+            failureThreshold: 120           # Neuron AOT compile can add many minutes
+            periodSeconds: 15
+      volumes:
+        - name: chat-template
+          configMap: { name: chat-template-qwen3-nonthinking }   # manifests/02-serving/chat-template-qwen3-nonthinking.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-llama3-neuron
+  namespace: inference
+spec:
+  selector: { app: vllm-neuron, tier: neuron }
+  ports:
+    - { name: http, port: 8000, targetPort: 8000 }

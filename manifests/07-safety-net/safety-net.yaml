@@ -1,0 +1,133 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Session-independent cost safety net (Phase 0). A CronJob on the always-on control plane scales all
+# GPU/Neuron serving Deployments to zero and pauses KEDA once a wall-clock deadline passes, so a
+# credential expiry or a stalled session cannot leave accelerator capacity running (the failure that
+# cost ~150 USD overnight). It depends on nothing outside the cluster: no session, no refreshed
+# credentials. The deadline lives in the ConfigMap spike-safety-net (key deadline_epoch, unix
+# seconds), set per session; deadline 0 means disarmed (noop). INVARIANT 8: namespace inference.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: safety-net
+  namespace: inference
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: safety-net
+  namespace: inference
+rules:
+  # NO `patch` ON DEPLOYMENTS (release candidate 7). The job only lists Deployments and changes
+  # their replica count, and `kubectl scale` does that through the deployments/scale subresource
+  # below (kubectl v1.37.2 pkg/scale/scale.go: Scales().Get, Update, Patch; it patches the
+  # Deployment itself only for the deprecated --record flag, which this job does not pass).
+  # `patch` on deployments would let this identity rewrite a pod template, which is code execution
+  # in the namespace, so it is withheld.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: ["keda.sh"]
+    resources: ["scaledobjects"]
+    verbs: ["get", "list", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: safety-net
+  namespace: inference
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: safety-net
+subjects:
+  - kind: ServiceAccount
+    name: safety-net
+    namespace: inference
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cost-safety-net
+  namespace: inference
+spec:
+  schedule: "*/2 * * * *"          # check every 2 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 100
+      template:
+        spec:
+          serviceAccountName: safety-net
+          restartPolicy: Never
+          securityContext:
+            # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            seccompProfile: { type: RuntimeDefault }
+          containers:
+            - name: safety-net
+              image: alpine/k8s:1.37.2@sha256:dcb7185e112a453aa72f426754849a97357727ef8f40168fb208c8cf59952042   # shell + kubectl v1.37.2 (matches cluster); pinned in versions.yaml (safety_net_image)
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: { drop: ["ALL"] }
+              env:
+                - { name: HOME, value: /tmp }
+              resources:
+                requests: { cpu: "50m", memory: "64Mi" }
+                limits: { cpu: "200m", memory: "128Mi" }
+              volumeMounts:
+                - { name: tmp, mountPath: /tmp }
+                - { name: config, mountPath: /config, readOnly: true }
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  set -u
+                  NOW=$(date +%s)
+                  DEADLINE=$(cat /config/deadline_epoch 2>/dev/null || echo 0)
+                  case "$DEADLINE" in ''|*[!0-9]*) DEADLINE=0 ;; esac
+                  if [ "$DEADLINE" -eq 0 ]; then
+                    echo "safety-net DISARMED (deadline_epoch=0), noop"; exit 0
+                  fi
+                  if [ "$NOW" -ge "$DEADLINE" ]; then
+                    echo "SAFETY-NET FIRING: now=$NOW >= deadline=$DEADLINE"
+                    for so in $(kubectl -n inference get scaledobject -o name 2>/dev/null); do
+                      kubectl -n inference annotate "$so" autoscaling.keda.sh/paused-replicas=0 --overwrite || true
+                    done
+                    # Primary: anything labelled spike-safety-net=managed. The serving
+                    # Deployments in manifests/02-serving and async-worker carry it. The EPP
+                    # Deployments cannot: they are created by the Helm chart (directive 4),
+                    # so no manifest here owns their labels. That is why the backstop exists.
+                    kubectl -n inference scale deploy -l spike-safety-net=managed --replicas=0 \
+                      && echo "scaled labelled deploys to 0" \
+                      || echo "WARN primary path failed; relying on the backstop below"
+                    # Backstop: discovered from live state rather than a hardcoded list, so a
+                    # renamed or newly added tier cannot be missed and a name that no longer
+                    # exists cannot be silently skipped. Covers every vllm-* Deployment
+                    # (serving and EPP, any tier) plus the async worker. submit-api and
+                    # sqs-exporter are deliberately left running: they hold no accelerator.
+                    for d in $(kubectl -n inference get deploy -o name 2>/dev/null \
+                               | sed 's|^deployment.apps/||' \
+                               | grep -E '^(vllm-|async-worker$)'); do
+                      kubectl -n inference scale deploy "$d" --replicas=0 \
+                        && echo "scaled $d to 0" \
+                        || echo "WARN could not scale $d, it may still be burning accelerator hours"
+                    done
+                    echo "SAFETY-NET FIRED: serving scaled to zero, KEDA paused"
+                  else
+                    echo "safety-net ARMED: $((DEADLINE-NOW))s remaining until deadline $DEADLINE"
+                  fi
+          volumes:
+            - { name: tmp, emptyDir: {} }
+            - name: config
+              configMap:
+                name: spike-safety-net
+                optional: true

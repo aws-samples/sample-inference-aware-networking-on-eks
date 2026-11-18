@@ -1,0 +1,13 @@
+# Test-only dependencies. moto backs the GPU-free offline correctness suite
+# (test_sweeper, test_ownership_guard, test_infra_backoff): it fakes SQS and DynamoDB so
+# exactly-once, the ownership guard and the infra-rejection backoff are provable with no
+# cluster, no GPU and no AWS credentials.
+#
+# Previously undeclared, which meant the offline suite could not run on a fresh clone.
+# Pinned exactly: these gates are the repository's correctness evidence, so the version
+# that produced a green run is recorded. Bump deliberately and re-run `make test-offline`.
+moto==5.2.2
+# Renders the Qwen3 chat templates in a sandbox (test_chat_template_provenance.py). Undeclared until
+# 2026-11-02: earlier green runs used a venv where it had been installed by hand, so a fresh clone
+# following the README failed at that gate. Same version as THIRD-PARTY-LICENSES.
+Jinja2==3.1.6

@@ -1,0 +1,46 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# KEDA ScaledObject for the async worker. Scales on SQS queue depth, not on
+# vLLM metrics. INVARIANT 4: targets the async-worker Deployment.
+# Auth: EKS Pod Identity. The keda-operator SA (namespace keda) has a Pod Identity
+# association to the inference-keda-sqs-read role (sqs:GetQueueAttributes on this queue
+# only), created by setup-async-infra.sh in its keda-async-auth step. The
+# TriggerAuthentication below selects that
+# provider so the aws-sqs-queue scaler reads the queue with the operator's identity.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-aws-credentials
+  namespace: inference
+spec:
+  podIdentity:
+    provider: aws          # EKS Pod Identity on the keda-operator pod
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: async-worker
+  namespace: inference
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: async-worker
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-aws-credentials
+      metadata:
+        # PLACEHOLDER ACCOUNT, and it CANNOT be fixed the way the others were: a KEDA scaler
+        # trigger field takes a literal, not a configMapKeyRef, so there is no discovery path here.
+        # CONSEQUENCE, stated rather than left to be discovered: applied as committed, this scaler
+        # queries a queue in an account that is not yours, the metric resolves empty, and
+        # `or vector(0)` turns that into a legitimate-looking zero, so the async worker never scales
+        # up. That is the KEDA empty-vector trap from DESIGN.md, pre-armed in a committed file.
+        # `make test-keda-queries` is the check that catches it; substitute your account id here
+        # before applying, or template this file.
+        queueURL: "https://sqs.us-west-2.amazonaws.com/111122223333/inference"   # SUBSTITUTE YOUR ACCOUNT
+        queueLength: "10"
+        awsRegion: "us-west-2"

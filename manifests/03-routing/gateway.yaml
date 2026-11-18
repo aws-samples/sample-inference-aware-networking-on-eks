@@ -1,0 +1,37 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# GatewayClass + Gateway. The httproute.yaml parentRef points at Gateway
+# `inference-gateway` in namespace `inference`. Envoy Gateway's controllerName is
+# gateway.envoyproxy.io/gatewayclass-controller (confirm against the installed
+# Envoy Gateway version). Envoy Gateway provisions an ALB/NLB or a Service for
+# this Gateway; front it with an ALB per the design's Layer 1a (idle timeout +
+# SSE keepalive seams) when moving past the smoke test.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: inference
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  # Attach the proxy access-log configuration (envoyproxy-accesslog.yaml) so every request
+  # is logged with its correlation id and the selected upstream vLLM pod, which is the
+  # authoritative per-request backend trace for the routing proof.
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: inference-proxy-config
+    namespace: inference
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: inference-gateway
+  namespace: inference
+spec:
+  gatewayClassName: inference
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same

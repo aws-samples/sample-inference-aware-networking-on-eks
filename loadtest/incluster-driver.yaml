@@ -1,0 +1,61 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# EPHEMERAL IN-CLUSTER LOAD DRIVER. Applied for a run and deleted after, like
+# tests/validation/promotion-stub.yaml. Not part of any deployed topology.
+#
+# WHY IT EXISTS (the maintainer's ruling, 2026-09-23). The overflow ramp measures ARRIVAL ORDER: grouped
+# versus interleaved admission is its independent variable. Driving it from a laptop through a
+# kubectl port-forward would serialise arrivals through one tunnel and measure the tunnel rather
+# than the router, and today's rebuilt cluster exposes the gateway only as a ClusterIP, so a laptop
+# driver cannot reach it at all (48 of 48 warm-up requests timed out and the ramp's own preflight
+# gate stopped the run before it measured anything).
+#
+# NO RBAC, DELIBERATELY. The driver needs two things: the gateway (in-cluster DNS) and each vLLM
+# replica's /metrics. Both are plain HTTP from inside the cluster. The pod endpoints are passed in
+# as POD_ENDPOINTS by the orchestrator, which already has kubectl on the operator's machine, so
+# this pod holds no ServiceAccount token beyond the namespace default and can read nothing from the
+# Kubernetes API. A driver that cannot call the API cannot perturb what it measures.
+#
+# THE ONE STATED DIFFERENCE, recorded rather than buried: the driver's vantage moves inside the
+# cluster, so ABSOLUTE latencies shift slightly against the Llama series' laptop-driven numbers.
+# Harmless here: these are new-series numbers under the comparability rule, and the ramp's metric is
+# the hit-rate curve against rho, which is computed from the replicas' own counters.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: loadtest-driver
+  namespace: inference
+  labels:
+    app: loadtest-driver
+    inference-aware-eks/ephemeral: "true"   # never part of a deployed topology
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false       # it has no business talking to the API server
+  securityContext:
+    # Non-root, high UID, default seccomp: the CPU services need none of root's powers.
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: driver
+      # The project's own image: python3 plus the standard library the drivers use. No new
+      # dependency enters the cluster for a test.
+      image: 111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-62d6b6e13814
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities: { drop: ["ALL"] }
+      command: ["sleep", "infinity"]
+      env:
+        - { name: HOME, value: /tmp }   # writable home on a read-only root
+        - name: PYTHONPATH
+          value: /scripts
+      volumeMounts:
+        - { name: scripts, mountPath: /scripts, readOnly: true }
+      resources:
+        requests: { cpu: 500m, memory: 512Mi }
+        limits: { cpu: "2", memory: 2Gi }
+  volumes:
+    - name: scripts
+      configMap: { name: loadtest-driver-scripts }

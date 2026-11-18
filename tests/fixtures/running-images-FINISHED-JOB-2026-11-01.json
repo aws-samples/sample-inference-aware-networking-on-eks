@@ -1,0 +1,119 @@
+{
+  "items": [
+    {
+      "kind": "Deployment",
+      "metadata": {
+        "name": "async-worker",
+        "namespace": "inference"
+      },
+      "spec": {
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "async-worker",
+                "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-new000000000"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "Deployment",
+      "metadata": {
+        "name": "inference-relay",
+        "namespace": "inference"
+      },
+      "spec": {
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "inference-relay",
+                "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-new000000000"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "kind": "CronJob",
+      "metadata": {
+        "name": "orphan-sweeper",
+        "namespace": "inference"
+      },
+      "spec": {
+        "jobTemplate": {
+          "spec": {
+            "template": {
+              "spec": {
+                "containers": [
+                  {
+                    "name": "sweeper",
+                    "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-new000000000"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "Job",
+      "metadata": {
+        "name": "orphan-sweeper-29891411",
+        "namespace": "inference"
+      },
+      "spec": {
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "sweeper",
+                "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-old000000000"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Failed",
+            "status": "True"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "Job",
+      "metadata": {
+        "name": "orphan-sweeper-29891412",
+        "namespace": "inference"
+      },
+      "spec": {
+        "template": {
+          "spec": {
+            "containers": [
+              {
+                "name": "sweeper",
+                "image": "111122223333.dkr.ecr.us-west-2.amazonaws.com/inference-async-worker:sha-old000000000"
+              }
+            ]
+          }
+        }
+      },
+      "status": {
+        "conditions": [
+          {
+            "type": "Complete",
+            "status": "True"
+          }
+        ]
+      }
+    }
+  ]
+}

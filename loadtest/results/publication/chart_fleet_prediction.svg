@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="340" font-family="sans-serif">
+<text x="280.0" y="20" text-anchor="middle" font-size="14" font-weight="bold">Predicted EPP advantage vs fleet size: gap = (N-1)/R at R=33</text>
+<text x="280.0" y="38" text-anchor="middle" font-size="10" fill="#900">PREDICTED at FIXED R; adding load with replicas raises R and offsets the gain</text>
+<line x1="60" y1="290" x2="530" y2="290" stroke="#333"/><line x1="60" y1="52" x2="60" y2="290" stroke="#333"/>
+<text x="52" y="294.0" text-anchor="end" font-size="10">0</text>
+<text x="52" y="246.4" text-anchor="end" font-size="10">0.1</text>
+<text x="52" y="198.8" text-anchor="end" font-size="10">0.2</text>
+<text x="52" y="151.20000000000002" text-anchor="end" font-size="10">0.3</text>
+<text x="52" y="103.6" text-anchor="end" font-size="10">0.4</text>
+<text x="52" y="56.0" text-anchor="end" font-size="10">0.5</text>
+<polyline points="118.8,275.6 148.1,261.2 177.5,246.7 206.9,232.3 236.2,217.9 265.6,203.5 295.0,189.0 324.4,174.6 353.8,160.2 383.1,145.8 412.5,131.3 441.9,116.9 471.2,102.5 500.6,88.1 530.0,73.6" fill="none" stroke="#57a" stroke-width="2"/>
+<circle cx="177.5" cy="246.7" r="4" fill="#57a"/><text x="183.5" y="246.7" font-size="9">N=4 (measured 0.091)</text>
+<circle cx="295.0" cy="189.0" r="4" fill="#57a"/><text x="301.0" y="189.0" font-size="9">N=8 (pred 0.21)</text>
+<circle cx="530.0" cy="73.6" r="4" fill="#57a"/><text x="536.0" y="73.6" font-size="9">N=16 (pred 0.45)</text>
+<text x="295.0" y="332" text-anchor="middle" font-size="11">replicas N</text>
+</svg>

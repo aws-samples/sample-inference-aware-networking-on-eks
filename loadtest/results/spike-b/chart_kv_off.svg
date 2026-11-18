@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="300" font-family="sans-serif">
+<text x="260.0" y="24" text-anchor="middle" font-size="16" font-weight="bold">KV metric OFF (contiguous): slots, length-blind</text>
+<line x1="54" y1="250" x2="500" y2="250" stroke="#888"/>
+<rect x="54" y="200.0" width="90" height="50.0" fill="#58a"/>
+<text x="99.0" y="194.0" text-anchor="middle" font-size="13" font-weight="bold">0.25</text>
+<text x="99.0" y="268" text-anchor="middle" font-size="12">1 short</text>
+<rect x="184" y="200.0" width="90" height="50.0" fill="#58a"/>
+<text x="229.0" y="194.0" text-anchor="middle" font-size="13" font-weight="bold">0.25</text>
+<text x="229.0" y="268" text-anchor="middle" font-size="12">1 long</text>
+<rect x="314" y="50.0" width="90" height="200.0" fill="#e63"/>
+<text x="359.0" y="44.0" text-anchor="middle" font-size="13" font-weight="bold">1</text>
+<text x="359.0" y="268" text-anchor="middle" font-size="12">4 short</text>
+</svg>
